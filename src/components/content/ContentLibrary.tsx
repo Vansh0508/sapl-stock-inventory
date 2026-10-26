@@ -17,17 +17,59 @@ import ViewsBar from "./ViewsBar"
 import { MasonryGrid } from "./MasonryGrid"
 import BulkMoveParameterModal from "./BulkMoveParameterModal"
 import FullPptGeneratorModal from "./FullPptGeneratorModal"
+import UploadSummaryModal from "./UploadSummaryModal"
 
 // ──────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 60
-// Best-effort dashboard counts — folders can hold thousands of assets, so we cap the
-// count query and show "N+" rather than paying for an exact count on every visit.
-const COUNT_CAP = 1000
 const ORGANIZED_FOLDERS = ["Head", "Floor", "Corner", "Closeup", "Tag"] as const
 type OrganizedFolder = (typeof ORGANIZED_FOLDERS)[number]
+
+/**
+ * Paginates through an entire folder in batches to compute the exact asset count
+ * without capping at 1000+.
+ */
+async function fetchExactFolderCount(folder: FolderKey): Promise<number> {
+  const path = folder === "Unorganized" ? "media" : `media/${folder}`
+  let total = 0
+  let offset = 0
+  const batchSize = 1000
+
+  for (;;) {
+    const items = await listFolder("images", path, { limit: batchSize, offset })
+    if (items.length === 0) break
+
+    const validItems = folder === "Unorganized" ? items.filter((i) => i.id !== null) : items
+    total += validItems.length
+
+    if (items.length < batchSize) break
+    offset += items.length
+  }
+
+  return total
+}
+
+const FOLDER_COUNTS_CACHE_KEY = "sapl_exact_folder_counts"
+let inMemoryFolderCounts: Record<string, { count: number; capped: boolean }> = {}
+
+function getInitialFolderCounts(): Record<string, { count: number; capped: boolean }> {
+  if (Object.keys(inMemoryFolderCounts).length > 0) return inMemoryFolderCounts
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem(FOLDER_COUNTS_CACHE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (parsed && typeof parsed === "object") {
+          inMemoryFolderCounts = parsed
+          return parsed
+        }
+      }
+    } catch {}
+  }
+  return {}
+}
 
 // Search scans the whole folder page by page rather than relying on Storage's own `search`
 // filter — some self-hosted storage-api versions only match on a name *prefix*, which made
@@ -541,9 +583,12 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   // (state, not just a ref, so MasonryGrid re-renders once it's actually attached on mount).
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null)
 
-  // Dashboard counts (root view only) — best-effort, capped
-  const [folderCounts, setFolderCounts] = useState<Record<string, { count: number; capped: boolean }>>({})
-  const [isCountsLoading, setIsCountsLoading] = useState(currentFolder === "root")
+  // Dashboard counts (root view only) — instant from local/in-memory cache, background revalidated
+  const [folderCounts, setFolderCounts] = useState<Record<string, { count: number; capped: boolean }>>(getInitialFolderCounts)
+  const [isCountsLoading, setIsCountsLoading] = useState(() => {
+    if (currentFolder !== "root") return false
+    return Object.keys(getInitialFolderCounts()).length === 0
+  })
 
   // Search — the raw query drives an instant local pre-filter every keystroke (cheap, in-memory),
   // while the debounced value triggers the authoritative full search once typing settles.
@@ -558,6 +603,8 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   const selectedNames = useMemo(() => new Set(selectedFilesMap.keys()), [selectedFilesMap])
   const [isMigrating, setIsMigrating] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([])
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   const goToFolder = useCallback((folder: FolderKey | "root") => {
     router.push(folder === "root" ? "/content" : `/content/${folderToSlug(folder)}`)
@@ -647,33 +694,35 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     }
   }, [currentFolder, fetchFolderPage, isLoadingMore, hasMore, hasQuery])
 
-  // ── Dashboard folder counts (root view only) — isCountsLoading already starts true for
-  //    the root case via its initial state above, so this effect only needs to flip it off. ──
+  // ── Dashboard folder counts (root view only) — fetches exact counts progressively ──
   useEffect(() => {
     if (currentFolder !== "root") return
     let cancelled = false
 
     const allKeys: FolderKey[] = [...ORGANIZED_FOLDERS, "Unorganized"]
-    Promise.all(
-      allKeys.map(async (folder) => {
-        const path = folder === "Unorganized" ? "media" : `media/${folder}`
-        const items = await listFolder("images", path, { limit: COUNT_CAP })
-        const count = folder === "Unorganized" ? items.filter((i) => i.id !== null).length : items.length
-        return [folder, { count, capped: count === COUNT_CAP }] as const
-      })
-    )
-      .then((entries) => {
+    let completed = 0
+
+    allKeys.forEach(async (folder) => {
+      try {
+        const count = await fetchExactFolderCount(folder)
         if (cancelled) return
-        setFolderCounts(Object.fromEntries(entries))
-      })
-      .catch((e) => {
-        if (cancelled) return
-        console.error(e)
-        toast.danger("Failed to load folder counts")
-      })
-      .finally(() => {
-        if (!cancelled) setIsCountsLoading(false)
-      })
+        setFolderCounts((prev) => {
+          const next = { ...prev, [folder]: { count, capped: false } }
+          inMemoryFolderCounts = next
+          try {
+            localStorage.setItem(FOLDER_COUNTS_CACHE_KEY, JSON.stringify(next))
+          } catch {}
+          return next
+        })
+      } catch (err) {
+        console.error(`Failed to load exact count for ${folder}:`, err)
+      } finally {
+        completed++
+        if (!cancelled && completed === allKeys.length) {
+          setIsCountsLoading(false)
+        }
+      }
+    })
 
     return () => {
       cancelled = true
@@ -1006,13 +1055,16 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
         const allKeys: FolderKey[] = [...ORGANIZED_FOLDERS, "Unorganized"]
         const entries = await Promise.all(
           allKeys.map(async (folder) => {
-            const path = folder === "Unorganized" ? "media" : `media/${folder}`
-            const items = await listFolder("images", path, { limit: COUNT_CAP })
-            const count = folder === "Unorganized" ? items.filter((i) => i.id !== null).length : items.length
-            return [folder, { count, capped: count === COUNT_CAP }] as const
+            const count = await fetchExactFolderCount(folder)
+            return [folder, { count, capped: false }] as const
           })
         )
-        setFolderCounts(Object.fromEntries(entries))
+        const newCounts = Object.fromEntries(entries)
+        inMemoryFolderCounts = newCounts
+        try {
+          localStorage.setItem(FOLDER_COUNTS_CACHE_KEY, JSON.stringify(newCounts))
+        } catch {}
+        setFolderCounts(newCounts)
         setIsCountsLoading(false)
       } else {
         setIsLoading(true)
@@ -1032,91 +1084,41 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     }
   }
 
-  // ── Uploads — optimistic: the tile (or count) appears immediately via a local object-URL
-  //    preview, then gets swapped for the real record once the upload completes. ───────────
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── Uploads — stages files into UploadSummaryModal for batch deduplication & availability check ──
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const list = e.target.files
     if (!list || list.length === 0) return
-
-    let uploadedCount = 0
-    toast.success(`Uploading ${list.length} file(s)…`)
-
-    for (let i = 0; i < list.length; i++) {
-      const file = list[i]
-      const folder = getFolderForFilename(file.name)
-      const path = `media/${folder}/${file.name}`
-      const tempId = `temp-${i}-${file.name}`
-      const previewUrl = URL.createObjectURL(file)
-      const showLocally = currentFolder === folder
-
-      const optimisticFile: StorageFile = {
-        name: file.name,
-        id: tempId,
-        created_at: null,
-        metadata: { size: file.size, mimetype: file.type },
-        storagePath: path,
-        publicUrl: previewUrl,
-        folder,
-        details: null,
-      }
-
-      if (showLocally) setFiles((prev) => [optimisticFile, ...prev])
-      if (currentFolder === "root") {
-        setFolderCounts((prev) => ({
-          ...prev,
-          [folder]: { count: (prev[folder]?.count ?? 0) + 1, capped: prev[folder]?.capped ?? false },
-        }))
-      }
-
-      try {
-        await uploadImage("images", path, file)
-
-        let attachedDetails: InventoryDetails | null = null
-        try {
-          const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "")
-          const baseSP = nameWithoutExt.replace(/__\d+_+$/, "").replace(/\s*\(\d+\)$/, "").replace(/_\d+$/, "").trim()
-
-          const { data: inv } = await (supabase.from("inventory" as any) as any).select("id").eq("serial_number", baseSP).maybeSingle()
-
-          if (inv) {
-            const publicUrl = getPublicUrl("images", path)
-            await (supabase.from("inventory_images" as any) as any).insert({
-              inventory_id: (inv as any).id,
-              storage_path: path,
-              public_url: publicUrl,
-            })
-            attachedDetails = (await resolveDetails([path]))[path] ?? null
-          }
-        } catch (assignErr) {
-          console.warn("Failed auto-assigning image row:", assignErr)
-        }
-
-        const finalUrl = getPublicUrl("images", path)
-        if (showLocally) {
-          setFiles((prev) =>
-            prev.map((f) => (f.id === tempId ? { ...f, id: null, publicUrl: finalUrl, details: attachedDetails } : f))
-          )
-        }
-        URL.revokeObjectURL(previewUrl)
-        uploadedCount++
-      } catch (err) {
-        console.error("Upload failed for file:", file.name, err)
-        toast.danger(`Failed to upload ${file.name}`)
-        URL.revokeObjectURL(previewUrl)
-
-        if (showLocally) setFiles((prev) => prev.filter((f) => f.id !== tempId))
-        if (currentFolder === "root") {
-          setFolderCounts((prev) => ({
-            ...prev,
-            [folder]: { count: Math.max(0, (prev[folder]?.count ?? 1) - 1), capped: prev[folder]?.capped ?? false },
-          }))
-        }
-      }
-    }
-
-    if (uploadedCount > 0) toast.success(`Uploaded ${uploadedCount} file(s) successfully!`)
+    setSelectedUploadFiles(Array.from(list))
+    setIsUploadModalOpen(true)
     e.target.value = ""
   }
+
+  const handleUploadSuccess = useCallback(
+    (newFiles: StorageFile[], folderDelta: Record<string, number>) => {
+      if (currentFolder !== "root") {
+        const matchingFiles = newFiles.filter((f) => f.folder === currentFolder)
+        if (matchingFiles.length > 0) {
+          setFiles((prev) => [...matchingFiles, ...prev])
+        }
+      } else {
+        setFolderCounts((prev) => {
+          const next = { ...prev }
+          for (const [folder, addedCount] of Object.entries(folderDelta)) {
+            next[folder] = {
+              count: (next[folder]?.count ?? 0) + addedCount,
+              capped: false,
+            }
+          }
+          inMemoryFolderCounts = next
+          try {
+            localStorage.setItem(FOLDER_COUNTS_CACHE_KEY, JSON.stringify(next))
+          } catch {}
+          return next
+        })
+      }
+    },
+    [currentFolder]
+  )
 
   const clearSelection = useCallback(() => {
     setSelectedFilesMap(new Map())
@@ -1242,7 +1244,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   )
 
   const showResultsGrid = hasQuery || currentFolder !== "root" || isCustomViewActive
-  const showDashboardLoading = !hasQuery && currentFolder === "root" && !isCustomViewActive && isCountsLoading
+  const showDashboardLoading = !hasQuery && currentFolder === "root" && !isCustomViewActive && isCountsLoading && Object.keys(folderCounts).length === 0
   const showSearchLoading = (hasQuery && isSearchLoading && displayFiles.length === 0) || (currentFolder === "root" && isCustomViewActive && isRootViewLoading && displayFiles.length === 0)
   const showFolderLoading = !hasQuery && currentFolder !== "root" && isLoading
 
@@ -1261,7 +1263,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
             <UploadIcon />
             Upload assets
           </Button>
-          <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleUpload} />
+          <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
         </div>
       </div>
 
@@ -1371,8 +1373,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
             </svg>
             <div>
               <h4 className="text-sm font-semibold text-amber-900">
-                Unorganized files detected ({folderCounts["Unorganized"]?.count ?? 0}
-                {folderCounts["Unorganized"]?.capped ? "+" : ""})
+                Unorganized files detected ({(folderCounts["Unorganized"]?.count ?? 0).toLocaleString()})
               </h4>
               <p className="text-xs text-amber-700 mt-0.5 font-medium">Reorganise root files into folder structures based on their numeric naming patterns automatically.</p>
             </div>
@@ -1422,8 +1423,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
                   <div>
                     <h3 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors leading-tight">{f.name}</h3>
                     <p className="text-[11px] text-zinc-400 font-semibold mt-1 uppercase tracking-wide">
-                      {folderCounts[f.name]?.count ?? 0}
-                      {folderCounts[f.name]?.capped ? "+" : ""} Assets
+                      {(folderCounts[f.name]?.count ?? 0).toLocaleString()} Assets
                     </p>
                     <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{f.desc}</p>
                   </div>
@@ -1442,8 +1442,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
                   <div>
                     <h3 className="text-sm font-bold text-zinc-900 group-hover:text-amber-600 transition-colors leading-tight">Unorganized</h3>
                     <p className="text-[11px] text-amber-600 font-semibold mt-1 uppercase tracking-wide">
-                      {folderCounts["Unorganized"]?.count ?? 0}
-                      {folderCounts["Unorganized"]?.capped ? "+" : ""} Assets
+                      {(folderCounts["Unorganized"]?.count ?? 0).toLocaleString()} Assets
                     </p>
                     <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Pending migration folder</p>
                   </div>
@@ -1676,6 +1675,19 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
             }
             : undefined
         }
+      />
+
+      {/* Upload Verification & Deduplication Summary Modal */}
+      <UploadSummaryModal
+        isOpen={isUploadModalOpen}
+        onClose={() => {
+          setIsUploadModalOpen(false)
+          setSelectedUploadFiles([])
+        }}
+        files={selectedUploadFiles}
+        currentFolder={currentFolder}
+        onUploadSuccess={handleUploadSuccess}
+        resolveDetails={resolveDetails}
       />
     </div>
   )

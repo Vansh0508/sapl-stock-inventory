@@ -5,8 +5,8 @@ import Image from "next/image"
 import { Button, Checkbox, Spinner, toast } from "@heroui/react"
 import { supabase } from "@/lib/supabase/client"
 import { getOriginalPublicUrl, getThumbnailUrl } from "@/lib/supabase/storage"
-import type { PptConfig, PptDetailField, PptFolderFilter, PptGroupByField, PptWishlistItem } from "@/types/ppt.types"
-import { PPT_DETAIL_FIELDS, PPT_FOLDER_FILTERS, PPT_GROUP_BY_OPTIONS, PPT_LAYOUT_VARIANTS, DEFAULT_PPT_CONFIG } from "@/types/ppt.types"
+import type { PptConfig, PptDetailField, PptFolderFilter, PptGroupByField, PptImageQuality, PptWishlistItem } from "@/types/ppt.types"
+import { PPT_DETAIL_FIELDS, PPT_FOLDER_FILTERS, PPT_GROUP_BY_OPTIONS, PPT_IMAGE_QUALITY_OPTIONS, PPT_LAYOUT_VARIANTS, DEFAULT_PPT_CONFIG } from "@/types/ppt.types"
 import { cn } from "@/lib/utils"
 import PptAssetPickerModal from "./PptAssetPickerModal"
 
@@ -279,7 +279,11 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
       a.remove()
       URL.revokeObjectURL(url)
 
-      toast.success("High-Resolution PPT downloaded successfully!")
+      toast.success(
+        config.imageQuality === "high"
+          ? "High-Resolution PPT downloaded successfully!"
+          : "Low-Resolution PPT downloaded successfully!"
+      )
       onClose()
     } catch (err: any) {
       console.error("PPT generation failed:", err)
@@ -304,8 +308,15 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
               <div>
                 <div className="flex items-center gap-2">
                   <h2 className="text-base font-extrabold tracking-tight text-zinc-900">Presentation Generator</h2>
-                  <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide">
-                    High-Res HD
+                  <span
+                    className={cn(
+                      "border text-[10px] font-bold px-2 py-0.5 rounded-md uppercase tracking-wide",
+                      config.imageQuality === "high"
+                        ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                        : "bg-amber-50 text-amber-700 border-amber-200"
+                    )}
+                  >
+                    {config.imageQuality === "high" ? "High-Res HD" : "Low-Res (Compressed)"}
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 font-medium">
@@ -342,7 +353,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                 {isGenerating ? (
                   <>
                     <Spinner size="sm" color="current" />
-                    <span>Exporting HD PPTX…</span>
+                    <span>{config.imageQuality === "high" ? "Exporting HD PPTX…" : "Exporting Compressed PPTX…"}</span>
                   </>
                 ) : (
                   <>
@@ -413,7 +424,20 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
               <div className="mt-auto p-4 bg-zinc-50 border border-zinc-200 rounded-2xl flex flex-col gap-2">
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-bold text-zinc-500 uppercase tracking-wider">Quality</span>
-                  <span className="text-emerald-700 font-extrabold">Ultra HD (Original)</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({ ...prev, imageQuality: prev.imageQuality === "high" ? "low" : "high" }))
+                    }
+                    className={cn(
+                      "font-extrabold px-2 py-0.5 rounded-md border cursor-pointer transition-all",
+                      config.imageQuality === "high"
+                        ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                        : "text-amber-700 bg-amber-50 border-amber-200"
+                    )}
+                  >
+                    {config.imageQuality === "high" ? "Ultra HD (Original)" : "Compressed (Fast)"}
+                  </button>
                 </div>
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="font-bold text-zinc-500 uppercase tracking-wider">Format</span>
@@ -433,6 +457,34 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                 {/* TAB 1: Shot Types & Grouping */}
                 {activeTab === "config" && (
                   <div className="max-w-4xl mx-auto flex flex-col gap-8">
+                    {/* 0. Image Export Resolution */}
+                    <div className="flex flex-col gap-3">
+                      <h3 className="text-xs font-extrabold uppercase tracking-wider text-zinc-400">
+                        Image Export Resolution
+                      </h3>
+                      <div className="grid grid-cols-2 gap-3">
+                        {PPT_IMAGE_QUALITY_OPTIONS.map((opt) => {
+                          const isActive = config.imageQuality === opt.value
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => setConfig((prev) => ({ ...prev, imageQuality: opt.value as PptImageQuality }))}
+                              className={cn(
+                                "p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1 select-none",
+                                isActive
+                                  ? "bg-indigo-50 border-indigo-300 text-indigo-900 shadow-3xs ring-2 ring-indigo-500/20"
+                                  : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-100 hover:border-zinc-300"
+                              )}
+                            >
+                              <span className="text-xs font-extrabold text-zinc-900">{opt.label}</span>
+                              <span className="text-[11px] text-zinc-500 font-medium leading-snug">{opt.description}</span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
                     {/* 1. Shot Type / Folder Selection */}
                     <div className="flex flex-col gap-3">
                       <div className="flex items-center justify-between">
@@ -893,7 +945,9 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                           Selected Product Assets ({eligibleSelectedFiles.length} Included)
                         </h3>
                         <p className="text-xs text-zinc-500 font-medium">
-                          All images will be fetched and exported in 100% full-resolution HD quality.
+                          {config.imageQuality === "high"
+                            ? "All images will be fetched and exported in 100% full-resolution HD quality."
+                            : "Images will be compressed on the fly for a smaller, faster export."}
                         </p>
                       </div>
 
@@ -903,8 +957,15 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                             Multi-Shot ({config.maxShotsPerSlide ?? 3} shots/slide)
                           </span>
                         )}
-                        <span className="text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
-                          High-Res HD Mode Active
+                        <span
+                          className={cn(
+                            "text-xs font-bold px-3 py-1 rounded-full border",
+                            config.imageQuality === "high"
+                              ? "text-emerald-700 bg-emerald-50 border-emerald-200"
+                              : "text-amber-700 bg-amber-50 border-amber-200"
+                          )}
+                        >
+                          {config.imageQuality === "high" ? "High-Res HD Mode Active" : "Low-Res Compressed Mode Active"}
                         </span>
                       </div>
                     </div>
@@ -1008,7 +1069,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                       {isGenerating ? (
                         <>
                           <Spinner size="sm" color="current" />
-                          <span>Exporting HD PPTX…</span>
+                          <span>{config.imageQuality === "high" ? "Exporting HD PPTX…" : "Exporting Compressed PPTX…"}</span>
                         </>
                       ) : (
                         <>

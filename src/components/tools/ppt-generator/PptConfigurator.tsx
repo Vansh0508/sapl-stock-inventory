@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { Button, Checkbox, toast } from "@heroui/react"
 import type { PptWorkspace } from "@/types/ppt.types"
-import { DEFAULT_PPT_CONFIG, PPT_COVER_PAGES, PPT_GROUP_BY_OPTIONS } from "@/types/ppt.types"
-import type { PptConfig, PptCoverPage, PptGroupByField, PptSizeType } from "@/types/ppt.types"
+import { DEFAULT_PPT_CONFIG, PPT_COVER_PAGES, PPT_GROUP_BY_OPTIONS, PPT_IMAGE_QUALITY_OPTIONS } from "@/types/ppt.types"
+import type { PptConfig, PptCoverPage, PptGroupByField, PptImageQuality, PptSizeType } from "@/types/ppt.types"
 import { getOriginalPublicUrl } from "@/lib/supabase/storage"
 import PptLivePreview from "./PptLivePreview"
 
@@ -119,6 +119,26 @@ export default function PptConfigurator({ workspace }: PptConfiguratorProps) {
                     <Checkbox.Indicator />
                   </Checkbox.Control>
                   <span className="text-sm text-zinc-700 uppercase">{type}</span>
+                </Checkbox.Content>
+              </Checkbox>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-zinc-500 uppercase tracking-wide">Image Resolution</label>
+          <div className="flex flex-col gap-1.5">
+            {PPT_IMAGE_QUALITY_OPTIONS.map((opt) => (
+              <Checkbox
+                key={opt.value}
+                isSelected={config.imageQuality === opt.value}
+                onChange={() => setConfig((prev) => ({ ...prev, imageQuality: opt.value as PptImageQuality }))}
+              >
+                <Checkbox.Content className="flex items-center gap-2 cursor-pointer">
+                  <Checkbox.Control>
+                    <Checkbox.Indicator />
+                  </Checkbox.Control>
+                  <span className="text-sm text-zinc-700">{opt.label}</span>
                 </Checkbox.Content>
               </Checkbox>
             ))}

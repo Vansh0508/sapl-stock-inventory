@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server"
 import PptxGenJS from "pptxgenjs"
 import sharp from "sharp"
-import type { PptConfig, PptSizeType, PptWishlistItem } from "@/types/ppt.types"
+import type { PptConfig, PptImageQuality, PptSizeType, PptWishlistItem } from "@/types/ppt.types"
 import { PPT_COVER_PAGES } from "@/types/ppt.types"
 import { groupItemsByProductCode, groupWishlistItems } from "@/lib/pptGrouping"
 import { getOriginalPublicUrl } from "@/lib/supabase/storage"
 
 export const runtime = "nodejs"
+// PPT export downloads and (optionally) re-encodes every source image in-process before
+// pptxgenjs can write the file, which comfortably exceeds default serverless/route timeouts
+// for large, image-heavy decks — especially in high-res mode. Give it a generous budget.
+export const maxDuration = 800
+
+const LOW_RES_MAX_DIMENSION = 1400
+const LOW_RES_JPEG_QUALITY = 62
 
 interface ImageDataResult {
   dataUri: string
@@ -55,8 +62,12 @@ function getImageDimensions(buffer: Buffer): { width: number; height: number } |
   return null
 }
 
-/** Downloads image using original high-resolution URL, extracts aspect ratio, and converts to base64 data URI for pptxgenjs. */
-async function fetchImageData(url: string | null): Promise<ImageDataResult | null> {
+/**
+ * Downloads image using original high-resolution URL, extracts aspect ratio, and converts to
+ * base64 data URI for pptxgenjs. When `quality` is "low", the downloaded source is re-encoded
+ * on the fly via sharp (downscaled + recompressed as JPEG) so low-res exports stay small and fast.
+ */
+async function fetchImageData(url: string | null, quality: PptImageQuality = "high"): Promise<ImageDataResult | null> {
   if (!url) return null
   try {
     const highResUrl = getOriginalPublicUrl(url)
@@ -64,8 +75,35 @@ async function fetchImageData(url: string | null): Promise<ImageDataResult | nul
     if (!res.ok) res = await fetch(url)
     if (!res.ok) return null
 
-    const buf = Buffer.from(await res.arrayBuffer())
-    const contentType = res.headers.get("content-type") ?? "image/jpeg"
+    let buf = Buffer.from(await res.arrayBuffer())
+    let contentType = res.headers.get("content-type") ?? "image/jpeg"
+
+    if (quality === "low") {
+      try {
+        const { data, info } = await sharp(buf)
+          .resize({
+            width: LOW_RES_MAX_DIMENSION,
+            height: LOW_RES_MAX_DIMENSION,
+            fit: "inside",
+            withoutEnlargement: true,
+          })
+          .jpeg({ quality: LOW_RES_JPEG_QUALITY, mozjpeg: true })
+          .toBuffer({ resolveWithObject: true })
+
+        buf = data
+        contentType = "image/jpeg"
+        const base64 = buf.toString("base64")
+        return {
+          dataUri: `data:${contentType};base64,${base64}`,
+          width: info.width,
+          height: info.height,
+        }
+      } catch (err) {
+        console.warn("Low-res compression failed, falling back to original bytes:", url, err)
+        // fall through to the high-res path below using the already-downloaded buffer
+      }
+    }
+
     const base64 = buf.toString("base64")
     let dimensions = getImageDimensions(buf)
     if (!dimensions || !dimensions.width || !dimensions.height) {
@@ -85,7 +123,7 @@ async function fetchImageData(url: string | null): Promise<ImageDataResult | nul
       height: dimensions?.height,
     }
   } catch (err) {
-    console.warn("Failed to fetch high-res image for PPT:", url, err)
+    console.warn("Failed to fetch image for PPT:", url, err)
     return null
   }
 }
@@ -176,12 +214,14 @@ export async function POST(request: Request) {
     pptx.defineLayout({ name: "SAPL_16x9", width: 13.33, height: 7.5 })
     pptx.layout = "SAPL_16x9"
 
+    const imageQuality: PptImageQuality = config.imageQuality ?? "high"
+
     // Load preloaded logo and custom cover/back data URIs in parallel
     const [logoData, coverData, backData, grouperData] = await Promise.all([
-      config.logoUrl ? fetchImageData(config.logoUrl) : null,
-      config.coverImageUrl ? fetchImageData(config.coverImageUrl) : null,
-      config.backImageUrl ? fetchImageData(config.backImageUrl) : null,
-      config.grouperImageUrl ? fetchImageData(config.grouperImageUrl) : null,
+      config.logoUrl ? fetchImageData(config.logoUrl, imageQuality) : null,
+      config.coverImageUrl ? fetchImageData(config.coverImageUrl, imageQuality) : null,
+      config.backImageUrl ? fetchImageData(config.backImageUrl, imageQuality) : null,
+      config.grouperImageUrl ? fetchImageData(config.grouperImageUrl, imageQuality) : null,
     ])
 
     // ── 1. Custom Cover Slide (First Slide) ──
@@ -298,7 +338,9 @@ export async function POST(request: Request) {
 
           // Fetch all images for this slide in parallel
           const imagesData = await Promise.all(
-            targetShots.map((item) => (item.imageUrl ? fetchImageData(item.imageUrl) : Promise.resolve(null)))
+            targetShots.map((item) =>
+              item.imageUrl ? fetchImageData(item.imageUrl, imageQuality) : Promise.resolve(null)
+            )
           )
 
           const validImages = imagesData.filter((d): d is ImageDataResult => d !== null)
@@ -426,7 +468,7 @@ export async function POST(request: Request) {
               })
             }
 
-            const imageData = item.imageUrl ? await fetchImageData(item.imageUrl) : null
+            const imageData = item.imageUrl ? await fetchImageData(item.imageUrl, imageQuality) : null
 
             // Render main left product image fitted strictly to container height preserving true aspect ratio
             if (imageData) {

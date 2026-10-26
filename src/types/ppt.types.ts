@@ -132,6 +132,13 @@ export const PPT_COVER_PAGES: { value: PptCoverPage; label: string; description:
   { value: "contact-cover", label: "Contact Cover", description: "Closing slide with contact details" },
 ]
 
+export type PptImageQuality = "high" | "low"
+
+export const PPT_IMAGE_QUALITY_OPTIONS: { value: PptImageQuality; label: string; description: string }[] = [
+  { value: "high", label: "High-Resolution", description: "Original full-quality images. Larger file size, best for print." },
+  { value: "low", label: "Low-Resolution", description: "Compressed on the fly. Smaller file, faster to export and share." },
+]
+
 export type PptDesignId = "classic"
 
 export type PptLayoutVariant = "full-details" | "grid-split" | "multi-shot" | "clean-card"
@@ -149,6 +156,7 @@ export interface PptConfig {
   layoutVariant: PptLayoutVariant
   maxShotsPerSlide?: 3 | 4 | 5
   sizeType: PptSizeType
+  imageQuality: PptImageQuality
   coverPages: PptCoverPage[]
   groupBy: PptGroupByField
   folderFilters: PptFolderFilter[]
@@ -165,6 +173,7 @@ export const DEFAULT_PPT_CONFIG: Omit<PptConfig, "projectName"> = {
   layoutVariant: "multi-shot",
   maxShotsPerSlide: 3,
   sizeType: "ft",
+  imageQuality: "high",
   coverPages: ["brand-cover"],
   groupBy: "none",
   folderFilters: ["Head", "Floor", "Corner", "Closeup", "Tag"],
