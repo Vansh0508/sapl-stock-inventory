@@ -17,60 +17,9 @@ import {
 import FilterPanel from "./FilterPanel"
 import { catalogFilterFields, galleryFilterFields } from "@/lib/filterFields"
 import ScrollerShadow from "@/components/ui/ScrollerShadow"
+import { ArrowsExpandVertical, BarsDescendingAlignLeftArrowDown, Check, ChevronDown, Funnel, LayoutColumns3, ListUl, Magnifier, Plus, TrashBin, Xmark } from "@gravity-ui/icons"
 
 // --- Icons (inline, 16px, currentColor) ----------------------------------
-const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" />
-  </svg>
-)
-const FilterIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 10h12M10 16h4" />
-  </svg>
-)
-const SortIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7h12M3 12h8M3 17h4M17 4v16m0 0l-3-3m3 3l3-3" />
-  </svg>
-)
-const GroupIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M7 12h13M7 18h13M3.5 12h.01M3.5 18h.01" />
-  </svg>
-)
-const RowHeightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 6h10M3 10h10M3 14h10M3 18h10M18 4v16M15 7l3-3 3 3M15 17l3 3 3-3" />
-  </svg>
-)
-
-export const ColumnsIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 4h16v16H4zM10 4v16M16 4v16" />
-  </svg>
-)
-const ChevronDown = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-  </svg>
-)
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m1 0l-.5 12a2 2 0 01-2 2H9.5a2 2 0 01-2-2L7 7" />
-  </svg>
-)
-const CloseX = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-)
-
 // --- Styled native select (in-flow, no portal — safe inside popovers) -----
 const FieldSelect = ({
   value,
@@ -94,7 +43,7 @@ const FieldSelect = ({
     >
       {children}
     </select>
-    <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400" />
+    <ChevronDown width="14" height="14" className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400" />
   </div>
 )
 
@@ -166,7 +115,7 @@ function SortPanel({ columns }: { columns: ToolbarColumn[] }) {
             aria-label="Remove sort"
             className="shrink-0 p-2 rounded-lg text-zinc-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
           >
-            <TrashIcon />
+            <TrashBin width="15" height="15" />
           </button>
         </div>
       ))}
@@ -184,7 +133,7 @@ function SortPanel({ columns }: { columns: ToolbarColumn[] }) {
               : "text-zinc-300 cursor-not-allowed"
           )}
         >
-          <PlusIcon />
+          <Plus width="14" height="14" />
           Add sort
         </button>
         {sorts.length > 0 && (
@@ -218,9 +167,7 @@ function GroupPanel({ columns }: { columns: ToolbarColumn[] }) {
     >
       {label}
       {selected && (
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+        <Check />
       )}
     </button>
   )
@@ -339,7 +286,7 @@ const ConditionChip = ({
         aria-label="Remove condition"
         className="p-0.5 rounded-full hover:bg-black/5 transition-colors cursor-pointer shrink-0"
       >
-        <CloseX />
+        <Xmark width="13" height="13" />
       </button>
     </span>
   )
@@ -353,9 +300,11 @@ export interface ToolbarProps {
   className?: string
   /** Context to specify which tab this toolbar belongs to */
   context?: "catalog" | "gallery"
+  /** Show the Row Height and Hide Columns controls. Default true; the catalog hosts them in its actions menu instead. */
+  showViewControls?: boolean
 }
 
-export default function Toolbar({ columns, className, context = "catalog" }: ToolbarProps) {
+export default function Toolbar({ columns, className, context = "catalog", showViewControls = true }: ToolbarProps) {
   const isMobile = useIsMobile()
 
   // Search state
@@ -612,7 +561,7 @@ export default function Toolbar({ columns, className, context = "catalog" }: Too
             : "text-zinc-600 hover:bg-zinc-100 border-transparent"
         )}
       >
-        <FilterIcon />
+        <Funnel />
         <span className="hidden md:inline">Filter</span>
         {totalAppliedConditions > 0 && (
           <span className="ml-0.5 inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-indigo-600 text-white text-[10px] font-semibold leading-none">
@@ -716,7 +665,7 @@ export default function Toolbar({ columns, className, context = "catalog" }: Too
                   "text-zinc-600 hover:bg-zinc-100 border-transparent whitespace-nowrap"
                 )}
               >
-                <SearchIcon />
+                <Magnifier />
                 <span className="hidden md:inline">Search</span>
               </motion.button>
             ) : (
@@ -749,30 +698,34 @@ export default function Toolbar({ columns, className, context = "catalog" }: Too
         {renderFilterControl()}
 
         {/* Sort Control */}
-        <ToolbarControl icon={<SortIcon />} label="Sort" badge={sorts.length} active={sorts.length > 0} align="end" panelClassName="w-80">
+        <ToolbarControl icon={<BarsDescendingAlignLeftArrowDown />} label="Sort" badge={sorts.length} active={sorts.length > 0} align="end" panelClassName="w-80">
           {() => <SortPanel columns={columns} />}
         </ToolbarControl>
 
         {/* Group Control */}
-        <ToolbarControl icon={<GroupIcon />} label="Group" active={groupBy !== null} align="end">
+        <ToolbarControl icon={<ListUl />} label="Group" active={groupBy !== null} align="end">
           {() => <GroupPanel columns={columns} />}
         </ToolbarControl>
 
-        {/* Row Height Control */}
-        <ToolbarControl icon={<RowHeightIcon />} label="Row Height" align="end">
-          {() => <RowHeightPanel />}
-        </ToolbarControl>
+        {showViewControls && (
+          <>
+            {/* Row Height Control */}
+            <ToolbarControl icon={<ArrowsExpandVertical />} label="Row Height" align="end">
+              {() => <RowHeightPanel />}
+            </ToolbarControl>
 
-        {/* Hide Columns Control */}
-        <ToolbarControl
-          icon={<ColumnsIcon />}
-          label="Hide Columns"
-          badge={hiddenColumns.length}
-          active={hiddenColumns.length > 0}
-          align="end"
-        >
-          {() => <HideColumnsPanel columns={columns} />}
-        </ToolbarControl>
+            {/* Hide Columns Control */}
+            <ToolbarControl
+              icon={<LayoutColumns3 />}
+              label="Hide Columns"
+              badge={hiddenColumns.length}
+              active={hiddenColumns.length > 0}
+              align="end"
+            >
+              {() => <HideColumnsPanel columns={columns} />}
+            </ToolbarControl>
+          </>
+        )}
       </div>
 
       {/* Rebuilt Active Filter Chips below Toolbar row */}

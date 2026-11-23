@@ -5,6 +5,7 @@ import { useCallback, useRef, useState } from "react"
 import { Reorder, motion, AnimatePresence } from "motion/react"
 import { Typography } from "@heroui/react"
 import { cn } from "@/lib/utils"
+import { ArrowUpFromLine, ChevronLeft, ChevronRight, GripHorizontal, Xmark } from "@gravity-ui/icons"
 
 export interface UploadedImage {
   id: string
@@ -24,24 +25,6 @@ interface ImageUploaderProps {
   maxImages?: number
   disabled?: boolean
 }
-
-const XIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-)
-
-const DragHandleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
-  </svg>
-)
-
-const UploadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-  </svg>
-)
 
 let idCounter = 0
 const uniqueId = () => `img_${++idCounter}_${Math.random().toString(36).slice(2, 7)}`
@@ -169,7 +152,7 @@ export default function ImageUploader({
           )}
         >
           <div className="text-zinc-400">
-            <UploadIcon />
+            <ArrowUpFromLine width="24" height="24" />
           </div>
           <div className="text-center">
             <Typography.Paragraph size="sm" weight="medium" className="text-zinc-700">Drag photos here or click to browse</Typography.Paragraph>
@@ -232,7 +215,7 @@ export default function ImageUploader({
 
                   {/* Drag handle (top left) */}
                   <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 rounded p-0.5 text-white">
-                    <DragHandleIcon />
+                    <GripHorizontal width="14" height="14" />
                   </div>
 
                   {/* Remove button */}
@@ -243,7 +226,7 @@ export default function ImageUploader({
                       className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center"
                       aria-label="Remove image"
                     >
-                      <XIcon />
+                      <Xmark width="12" height="12" />
                     </button>
                   )}
                 </div>
@@ -263,9 +246,7 @@ export default function ImageUploader({
                       className="text-white hover:text-indigo-300 disabled:opacity-30 cursor-pointer p-0.5"
                       aria-label="Move left"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                      </svg>
+                      <ChevronLeft width="10" height="10" />
                     </button>
                     <button
                       type="button"
@@ -274,9 +255,7 @@ export default function ImageUploader({
                       className="text-white hover:text-indigo-300 disabled:opacity-30 cursor-pointer p-0.5"
                       aria-label="Move right"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                      </svg>
+                      <ChevronRight width="10" height="10" />
                     </button>
                   </div>
                 )}

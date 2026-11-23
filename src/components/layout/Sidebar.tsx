@@ -6,6 +6,7 @@ import { Typography } from "@heroui/react"
 import { cn } from "@/lib/utils"
 import SignOutButton from "@/components/auth/SignOutButton"
 import Logo from "@/components/shared/Logo"
+import { Cubes3, Picture } from "@gravity-ui/icons"
 
 interface SidebarProps {
   isOpen: boolean
@@ -23,22 +24,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           name: "Products",
           href: "/products",
           icon: (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M12 2L2 7l10 5 10-5-10-5z" />
-              <path d="M2 17l10 5 10-5" />
-              <path d="M2 12l10 5 10-5" />
-            </svg>
+            <Cubes3 width="18" height="18" aria-hidden="true" />
           ),
           active: pathname.startsWith("/products"),
         },
@@ -46,53 +32,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           name: "Content",
           href: "/content",
           icon: (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <line x1="9" y1="3" x2="9" y2="21" />
-              <line x1="9" y1="9" x2="21" y2="9" />
-              <line x1="9" y1="15" x2="21" y2="15" />
-            </svg>
+            <Picture width="18" height="18" aria-hidden="true" />
           ),
           active: pathname.startsWith("/content"),
-        },
-      ],
-    },
-    {
-      group: "TOOLS",
-      items: [
-        {
-          name: "PPT Generator",
-          href: "/tools/ppt-generator",
-          icon: (
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <rect x="3" y="4" width="18" height="12" rx="1" />
-              <line x1="8" y1="20" x2="16" y2="20" />
-              <line x1="12" y1="16" x2="12" y2="20" />
-            </svg>
-          ),
-          active: pathname.startsWith("/tools/ppt-generator"),
         },
       ],
     },

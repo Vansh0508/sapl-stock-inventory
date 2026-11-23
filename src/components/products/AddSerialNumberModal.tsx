@@ -26,6 +26,7 @@ import { supabase } from "@/lib/supabase/client"
 import { uploadImage } from "@/lib/supabase/storage"
 import { cn } from "@/lib/utils"
 import { runWithVerificationGuard } from "@/lib/verificationGuard"
+import { Check as CheckIcon, ChevronDown, Plus, Sparkles, TrashBin } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Schema & Types
@@ -112,22 +113,6 @@ interface AddSerialNumberModalProps {
 // Icons
 // ──────────────────────────────────────────────────────────
 
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-  </svg>
-)
-const SparklesIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5 text-indigo-600">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-  </svg>
-)
-
 // ──────────────────────────────────────────────────────────
 // Search Select Components
 // ──────────────────────────────────────────────────────────
@@ -192,18 +177,7 @@ function HeroSearchSelect({
             <span className={cn("truncate flex-1", !selectedOption ? "text-zinc-400" : "text-zinc-900")}>
               {selectedOption ? selectedOption.label : placeholder}
             </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="text-zinc-400 shrink-0 ml-2"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown width="14" height="14" className="text-zinc-400 shrink-0 ml-2" />
           </button>
         </Popover.Trigger>
         <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[220px] p-0 z-50">
@@ -318,18 +292,7 @@ function HeroSearchMultiSelect({
             <span className={cn("truncate flex-1", (!value || value.length === 0) ? "text-zinc-400" : "text-zinc-900")}>
               {displayLabel}
             </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="text-zinc-400 shrink-0 ml-2"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown width="14" height="14" className="text-zinc-400 shrink-0 ml-2" />
           </button>
         </Popover.Trigger>
         <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[240px] p-0 z-50">
@@ -375,9 +338,7 @@ function HeroSearchMultiSelect({
                           )}
                         >
                           {isSelected && (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <CheckIcon width="10" height="10" />
                           )}
                         </span>
                         <span>{o.label}</span>
@@ -1101,7 +1062,7 @@ export default function AddSerialNumberModal({
                                   <Spinner size="sm" color="accent" />
                                 ) : (
                                   <>
-                                    <SparklesIcon />
+                                    <Sparkles className="mr-1.5 text-indigo-600" />
                                     <span>Scan Storage</span>
                                   </>
                                 )}
@@ -1426,7 +1387,7 @@ export default function AddSerialNumberModal({
                                     }
                                     className="flex items-center gap-1 bg-white hover:bg-zinc-50 border-zinc-200 text-zinc-700 h-8 rounded-lg cursor-pointer"
                                   >
-                                    <PlusIcon /> Add Fiber
+                                    <Plus width="14" height="14" /> Add Fiber
                                   </Button>
                                 </div>
 
@@ -1442,7 +1403,7 @@ export default function AddSerialNumberModal({
                                         onPress={() => handleRemoveFiber(idx)}
                                         className="absolute top-2.5 right-2.5 min-w-0 w-7 h-7 p-0 rounded-lg text-zinc-400 hover:text-red-500 hover:bg-red-50 border-transparent hover:border-red-100 cursor-pointer"
                                       >
-                                        <TrashIcon />
+                                        <TrashBin width="14" height="14" />
                                       </Button>
 
                                       <div className="w-4/5">

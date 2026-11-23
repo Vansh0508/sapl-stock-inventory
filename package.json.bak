@@ -1,0 +1,50 @@
+{
+  "name": "sapl-stock-inventory",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@heroui/react": "^3.2.1",
+    "@hookform/resolvers": "^5.4.0",
+    "@huggingface/transformers": "^4.3.2",
+    "@supabase/ssr": "^0.12.0",
+    "@supabase/supabase-js": "^2.108.2",
+    "@tanstack/react-table": "^8.21.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.41.0",
+    "masonic": "^4.1.0",
+    "motion": "^12.41.0",
+    "next": "^16.4.3",
+    "pptxgenjs": "^4.0.1",
+    "react": "19.2.4",
+    "react-aria-components": "^1.18.0",
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.80.0",
+    "sharp": "^0.35.3",
+    "tailwind-merge": "^3.6.0",
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "zod": "^4.4.3",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "^16.4.3",
+    "supabase": "^2.107.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  },
+  "allowScripts": {
+    "onnxruntime-node@1.30.0": true,
+    "unrs-resolver@1.12.2": true,
+    "protobufjs@7.6.6": true
+  }
+}

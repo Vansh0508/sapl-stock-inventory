@@ -17,39 +17,9 @@ import type {
 import { buildCatalogQuery } from "@/lib/applyFilters"
 import { supabase } from "@/lib/supabase/client"
 import ScrollerShadow from "@/components/ui/ScrollerShadow"
+import { Check, ChevronDown, CircleQuestion, Funnel, Grip, Plus, TrashBin } from "@gravity-ui/icons"
 
 // --- Icons ----------------------------------------------------------------
-const FilterIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M6 10h12M10 16h4" />
-  </svg>
-)
-const DragIcon = () => (
-  <svg width="10" height="16" viewBox="0 0 12 18" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-zinc-400">
-    <circle cx="2" cy="2" r="1.5" fill="currentColor"/>
-    <circle cx="2" cy="9" r="1.5" fill="currentColor"/>
-    <circle cx="2" cy="16" r="1.5" fill="currentColor"/>
-    <circle cx="10" cy="2" r="1.5" fill="currentColor"/>
-    <circle cx="10" cy="9" r="1.5" fill="currentColor"/>
-    <circle cx="10" cy="16" r="1.5" fill="currentColor"/>
-  </svg>
-)
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011-1h4a1 1 0 011 1v2m1 0l-.5 12a2 2 0 01-2 2H9.5a2 2 0 01-2-2L7 7" />
-  </svg>
-)
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-const HelpIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer shrink-0">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
-
 // --- Operators Configuration ----------------------------------------------
 const OPERATORS_BY_FIELD_TYPE: Record<FilterFieldType, { value: FilterOperator; label: string }[]> = {
   text: [
@@ -153,9 +123,7 @@ function HeroUISelect({
           {options.find((o) => o.value === value)?.label || placeholder}
         </Select.Value>
         <Select.Indicator className="text-zinc-400">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown width="14" height="14" />
         </Select.Indicator>
       </Select.Trigger>
       <Select.Popover className="bg-white border border-zinc-200 shadow-xl rounded-xl overflow-hidden p-1 min-w-[140px] z-[60] animate-in fade-in-50 slide-in-from-top-1 duration-100">
@@ -169,9 +137,7 @@ function HeroUISelect({
               >
                 <span>{o.label}</span>
                 {value === o.value && (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-indigo-600">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
+                  <Check width="12" height="12" className="text-indigo-600" />
                 )}
               </ListBoxItem>
             ))}
@@ -342,9 +308,7 @@ function SearchableEnumSelect({
                   >
                     <span>{o.label}</span>
                     {selected && (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-indigo-600">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <Check width="12" height="12" className="text-indigo-600" />
                     )}
                   </button>
                 )
@@ -377,9 +341,7 @@ function ConjunctionSelect({ value, onChange, ariaLabel }: ConjunctionSelectProp
           {value === "AND" ? "and" : "or"}
         </Select.Value>
         <Select.Indicator className="text-zinc-500">
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown width="10" height="10" />
         </Select.Indicator>
       </Select.Trigger>
       <Select.Popover className="bg-white border border-zinc-200 shadow-lg rounded-lg overflow-hidden p-1 min-w-[70px] z-[70]">
@@ -614,7 +576,7 @@ function ConditionRow({
         className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
         aria-label="Remove condition"
       >
-        <TrashIcon />
+        <TrashBin width="14" height="14" />
       </button>
 
       {!isMobile && !isInsideGroup && (
@@ -625,7 +587,7 @@ function ConditionRow({
             className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-600 hover:bg-zinc-550 hover:bg-zinc-50 cursor-grab active:cursor-grabbing shrink-0"
             aria-label="Drag to reorder"
           >
-            <DragIcon />
+            <Grip width="10" height="16" className="text-zinc-400" />
           </div>
         </>
       )}
@@ -724,7 +686,7 @@ function GroupBlockRow({
                 className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-indigo-600 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0"
                 aria-label="Add condition"
               >
-                <PlusIcon />
+                <Plus width="14" height="14" />
               </button>
               <div className="w-px h-9 bg-zinc-200 self-stretch shrink-0" />
               <button
@@ -733,7 +695,7 @@ function GroupBlockRow({
                 className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-red-500 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
                 aria-label="Remove group"
               >
-                <TrashIcon />
+                <TrashBin width="14" height="14" />
               </button>
               {!isMobile && (
                 <>
@@ -743,7 +705,7 @@ function GroupBlockRow({
                     className="w-9 h-9 flex items-center justify-center text-zinc-400 hover:text-zinc-650 hover:text-zinc-600 hover:bg-zinc-100 cursor-grab active:cursor-grabbing shrink-0"
                     aria-label="Drag group"
                   >
-                    <DragIcon />
+                    <Grip width="10" height="16" className="text-zinc-400" />
                   </div>
                 </>
               )}
@@ -1134,7 +1096,7 @@ export default function FilterPanel({
         <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-4 shrink-0 bg-white">
           <div className="flex items-center gap-2">
             <span className="text-zinc-550 text-zinc-500 font-semibold">
-              <FilterIcon />
+              <Funnel />
             </span>
             <Typography.Paragraph size="sm" weight="semibold" className="text-zinc-900">Filters</Typography.Paragraph>
           </div>
@@ -1151,16 +1113,16 @@ export default function FilterPanel({
               onClick={handleAddConditionToFirstGroup}
               className="text-blue-600 hover:text-blue-700 font-semibold text-[13px] flex items-center gap-1 cursor-pointer transition-colors bg-transparent border-none p-0"
             >
-              <PlusIcon /> Add condition
+              <Plus width="14" height="14" /> Add condition
             </button>
             <button
               type="button"
               onClick={handleAddGroupEmpty}
               className="text-zinc-500 hover:text-zinc-700 font-semibold text-[13px] flex items-center gap-1 cursor-pointer transition-colors bg-transparent border-none p-0"
             >
-              <PlusIcon /> Add condition group
+              <Plus width="14" height="14" /> Add condition group
             </button>
-            <HelpIcon />
+            <CircleQuestion className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer shrink-0" />
           </div>
         </div>
 
@@ -1235,7 +1197,7 @@ export default function FilterPanel({
       <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-3 shrink-0 bg-white">
         <div className="flex items-center gap-2">
           <span className="text-zinc-500 font-semibold">
-            <FilterIcon />
+            <Funnel />
           </span>
           <Typography.Paragraph size="sm" weight="semibold" className="text-zinc-900">Filters</Typography.Paragraph>
         </div>
@@ -1325,16 +1287,16 @@ export default function FilterPanel({
             onClick={handleAddConditionToFirstGroup}
             className="text-blue-600 hover:text-blue-700 font-semibold text-[13px] flex items-center gap-1 cursor-pointer transition-colors bg-transparent border-none p-0"
           >
-            <PlusIcon /> Add condition
+            <Plus width="14" height="14" /> Add condition
           </button>
           <button
             type="button"
             onClick={handleAddGroupEmpty}
             className="text-zinc-500 hover:text-zinc-700 font-semibold text-[13px] flex items-center gap-1 cursor-pointer transition-colors bg-transparent border-none p-0"
           >
-            <PlusIcon /> Add condition group
+            <Plus width="14" height="14" /> Add condition group
           </button>
-          <HelpIcon />
+          <CircleQuestion className="text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer shrink-0" />
         </div>
       </ScrollerShadow>
 

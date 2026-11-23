@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "motion/react"
 import { Typography } from "@heroui/react"
+import { Xmark } from "@gravity-ui/icons"
 
 interface BottomSheetProps {
   isOpen: boolean
@@ -83,9 +84,7 @@ export default function BottomSheet({ isOpen, onClose, title, children }: Bottom
                 aria-label="Close"
                 className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                <Xmark width="20" height="20" />
               </button>
             </div>
             <div className="overflow-y-auto px-5 py-4">{children}</div>

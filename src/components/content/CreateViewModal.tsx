@@ -5,6 +5,8 @@ import { Modal, Button, Checkbox, ScrollShadow } from "@heroui/react"
 import { supabase } from "@/lib/supabase/client"
 import { useContentViewsStore, type ContentView, type ContentFilterConfig } from "@/stores/contentViewsStore"
 import { cn } from "@/lib/utils"
+import { FOLDER_KEYS } from "@/lib/content-folders"
+import { Magnifier } from "@gravity-ui/icons"
 
 interface CreateViewModalProps {
   isOpen: boolean
@@ -28,7 +30,7 @@ const PARAMETER_SECTIONS: ParameterSection[] = [
   { key: "serialCounts", label: "Serial Count (Pieces)" },
 ]
 
-const FOLDER_OPTIONS = ["Head", "Floor", "Corner", "Closeup", "Tag", "Unorganized"]
+const FOLDER_OPTIONS = [...FOLDER_KEYS]
 const SERIAL_COUNT_OPTIONS = ["0", "1", "2-5", "6-10", ">10"]
 
 export default function CreateViewModal({ isOpen, onClose, editingView }: CreateViewModalProps) {
@@ -298,16 +300,7 @@ export default function CreateViewModal({ isOpen, onClose, editingView }: Create
 
                   {/* Option Search Input */}
                   <div className="relative">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
-                    </svg>
+                    <Magnifier className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
                     <input
                       type="text"
                       placeholder={`Search ${PARAMETER_SECTIONS.find((s) => s.key === activeParamKey)?.label}...`}

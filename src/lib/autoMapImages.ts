@@ -71,7 +71,7 @@ export async function autoMapMediaImagesToSerials(): Promise<AutoMapResult> {
     }
   }
 
-  // 3. Scan media folders in Supabase Storage with offset pagination
+  // 3. Scan media and Fabrics folders in Supabase Storage with offset pagination
   const baseFolders = [
     "media",
     "media/Head",
@@ -80,6 +80,10 @@ export async function autoMapMediaImagesToSerials(): Promise<AutoMapResult> {
     "media/Closeup",
     "media/Tag",
     "media/Unorganized",
+    "Fabrics/Closeup",
+    "Fabrics/Head",
+    "Fabrics/Tag",
+    "Fabrics/Texture",
     "",
   ]
 

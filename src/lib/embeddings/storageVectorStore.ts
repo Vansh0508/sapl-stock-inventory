@@ -8,11 +8,10 @@
 import { supabase } from "@/lib/supabase/client"
 import { listFolder, getPublicUrl } from "@/lib/supabase/storage"
 import { generateImageEmbedding, normalizeVector } from "./embeddingService"
-import type { FolderKey } from "@/lib/content-folders"
+import { FOLDER_KEYS, getFileStoragePath, getFolderStoragePath } from "@/lib/content-folders"
 
 const VECTOR_BUCKET = "images"
 const MANIFEST_PATH = "vector-store/manifest.json"
-const ORGANIZED_FOLDERS: FolderKey[] = ["Head", "Floor", "Corner", "Closeup", "Tag", "Unorganized"]
 
 export type VectorManifest = Record<string, number[]>
 
@@ -100,8 +99,8 @@ export async function indexStorageImagesToVectorStore(
 
     const storageFiles: { storagePath: string; publicUrl: string }[] = []
 
-    for (const folder of ORGANIZED_FOLDERS) {
-      const path = folder === "Unorganized" ? "media" : `media/${folder}`
+    for (const folder of FOLDER_KEYS) {
+      const path = getFolderStoragePath(folder)
       try {
         const items = await listFolder(VECTOR_BUCKET, path, { limit: 1000 })
         for (const item of items) {
@@ -109,7 +108,7 @@ export async function indexStorageImagesToVectorStore(
           const isFile = item.id !== null || item.name.includes(".") || item.metadata !== undefined
           if (!isFile) continue
 
-          const storagePath = folder === "Unorganized" ? `media/${item.name}` : `media/${folder}/${item.name}`
+          const storagePath = getFileStoragePath(folder, item.name)
           const publicUrl = getPublicUrl(VECTOR_BUCKET, storagePath)
           storageFiles.push({ storagePath, publicUrl })
         }

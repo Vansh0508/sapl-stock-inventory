@@ -4,21 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import SearchBar from "@/components/shared/SearchBar"
 import { cn } from "@/lib/utils"
-
-const SearchIcon = () => (
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="16"
-    height="16"
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth="2"
-  >
-    <circle cx="11" cy="11" r="8" />
-    <path strokeLinecap="round" d="M21 21l-4.35-4.35" />
-  </svg>
-)
+import { Magnifier } from "@gravity-ui/icons"
 
 interface SearchToggleProps {
   value: string
@@ -42,7 +28,8 @@ export default function SearchToggle({
   ariaLabel = "Search",
   expandedWidth = 256,
 }: SearchToggleProps) {
-  const [isOpen, setIsOpen] = useState(false)
+  // Start open if there's already a query, so an active search is never hidden behind the button
+  const [isOpen, setIsOpen] = useState(() => value !== "")
   const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -79,7 +66,7 @@ export default function SearchToggle({
               "text-zinc-600 hover:bg-zinc-100 border-transparent whitespace-nowrap"
             )}
           >
-            <SearchIcon />
+            <Magnifier />
             <span>Search</span>
           </motion.button>
         ) : (

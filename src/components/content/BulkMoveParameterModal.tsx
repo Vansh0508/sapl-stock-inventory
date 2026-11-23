@@ -6,6 +6,7 @@ import Image from "next/image"
 import { supabase } from "@/lib/supabase/client"
 import { getThumbnailUrl } from "@/lib/supabase/storage"
 import { cn } from "@/lib/utils"
+import { ArrowRightArrowLeft, Check } from "@gravity-ui/icons"
 
 interface StorageFile {
   name: string
@@ -390,9 +391,7 @@ export default function BulkMoveParameterModal({ isOpen, onClose, selectedFiles,
             <Modal.Header className="px-6 pt-5 pb-4 border-b border-zinc-100 flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm shadow-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m-3-15L21 6m0 0l-4.5 4.5M21 6H7.5" />
-                  </svg>
+                  <ArrowRightArrowLeft width="20" height="20" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-zinc-900">Shift Inventory Parameters</h3>
@@ -490,9 +489,7 @@ export default function BulkMoveParameterModal({ isOpen, onClose, selectedFiles,
                       >
                         <span>{param.label}</span>
                         {isActive && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                          </svg>
+                          <Check width="13" height="13" />
                         )}
                       </button>
                     )

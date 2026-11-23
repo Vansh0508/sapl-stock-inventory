@@ -14,21 +14,18 @@ export default function ProductsTabs() {
     selectedKey = "catalog"
   } else if (pathname.includes("/products/manage")) {
     selectedKey = "manage"
-  } else if (pathname.includes("/products/serial-numbers")) {
-    selectedKey = "serial-numbers"
   }
 
   const tabs = [
     { key: "dashboard", label: "Dashboard" },
     { key: "gallery", label: "Gallery" },
     { key: "catalog", label: "Catalog" },
-    { key: "serial-numbers", label: "Serial Numbers" },
     { key: "manage", label: "Manage" },
   ]
 
   return (
     <div className="w-full px-4 md:px-6 pt-4 shrink-0 border-b border-zinc-200/60 flex items-end">
-      <div className="flex w-full md:w-auto relative gap-6">
+      <div className="flex w-full md:w-auto relative gap-4 md:gap-6 overflow-x-auto scrollbar-none">
         {tabs.map((tab) => {
           const isActive = selectedKey === tab.key
           return (
@@ -36,7 +33,7 @@ export default function ProductsTabs() {
               key={tab.key}
               onClick={() => router.push(`/products/${tab.key}`)}
               className={cn(
-                "pb-3 flex-1 text-center text-base font-medium transition-colors relative cursor-pointer",
+                "pb-3 flex-1 shrink-0 whitespace-nowrap text-center text-base font-medium transition-colors relative cursor-pointer",
                 isActive ? "text-blue-600" : "text-zinc-400 hover:text-zinc-600"
               )}
             >

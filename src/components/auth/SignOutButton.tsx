@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast, Typography } from "@heroui/react"
 import { supabase } from "@/lib/supabase/client"
+import { ArrowRightFromSquare } from "@gravity-ui/icons"
 
 /**
  * Sidebar footer control: shows the signed-in user's email and signs them out.
@@ -61,23 +62,7 @@ export default function SignOutButton() {
         disabled={isSigningOut}
         className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-indigo-200/80 hover:bg-indigo-500/10 hover:text-white transition-all duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="text-indigo-300"
-          aria-hidden="true"
-        >
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <polyline points="16 17 21 12 16 7" />
-          <line x1="21" y1="12" x2="9" y2="12" />
-        </svg>
+        <ArrowRightFromSquare width="18" height="18" className="text-indigo-300" aria-hidden="true" />
         <span>{isSigningOut ? "Signing out..." : "Sign Out"}</span>
       </button>
     </div>

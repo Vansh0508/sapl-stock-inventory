@@ -13,6 +13,7 @@ import SearchToggle from "@/components/shared/SearchToggle"
 import FormTextField from "@/components/shared/FormTextField"
 import FormAlert from "@/components/shared/FormAlert"
 import ReassignDeleteModal, { type ReassignOption } from "@/components/shared/ReassignDeleteModal"
+import { ChevronRight, EllipsisVertical, PencilToSquare, Plus, TrashBin } from "@gravity-ui/icons"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,38 +57,6 @@ type QualityForm = z.infer<typeof qualitySchema>
 type CodeForm    = z.infer<typeof codeSchema>
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
-
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-
-const EditIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7h12M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m1 0l-.5 12a2 2 0 01-2 2H9.5a2 2 0 01-2-2L7 7" />
-  </svg>
-)
-
-const MoreIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-    <circle cx="12" cy="5" r="1.75" />
-    <circle cx="12" cy="12" r="1.75" />
-    <circle cx="12" cy="19" r="1.75" />
-  </svg>
-)
-
-const WarnIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-red-500">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-  </svg>
-)
 
 // ── Data hook ─────────────────────────────────────────────────────────────────
 
@@ -560,18 +529,7 @@ export default function QualitiesSection() {
                   }}
                   className="w-5 h-5 flex items-center justify-center rounded hover:bg-zinc-100 text-zinc-500 cursor-pointer"
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className={cn("transition-transform duration-150", row.getIsExpanded() ? "rotate-90" : "")}
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 18l6-6-6-6" />
-                  </svg>
+                  <ChevronRight width="14" height="14" className={cn("transition-transform duration-150", row.getIsExpanded() ? "rotate-90" : "")} />
                 </button>
               ) : (
                 <span className="w-5" /> // spacer for children
@@ -630,7 +588,7 @@ export default function QualitiesSection() {
                   className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all cursor-pointer"
                   aria-label={isQuality ? "Quality actions" : "Quality code actions"}
                 >
-                  <MoreIcon />
+                  <EllipsisVertical />
                 </Dropdown.Trigger>
                 <Dropdown.Popover placement="bottom end" className="min-w-[170px]">
                   <Dropdown.Menu aria-label="Row actions">
@@ -640,7 +598,7 @@ export default function QualitiesSection() {
                         onAction={() => openAddCode(q)}
                         className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 rounded-lg cursor-pointer outline-hidden hover:bg-indigo-50 hover:text-indigo-700 data-[focused]:bg-indigo-50 data-[focused]:text-indigo-700"
                       >
-                        <PlusIcon />
+                        <Plus width="15" height="15" />
                         Add Code
                       </Dropdown.Item>
                     )}
@@ -652,7 +610,7 @@ export default function QualitiesSection() {
                       }}
                       className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 rounded-lg cursor-pointer outline-hidden hover:bg-indigo-50 hover:text-indigo-700 data-[focused]:bg-indigo-50 data-[focused]:text-indigo-700"
                     >
-                      <EditIcon />
+                      <PencilToSquare width="14" height="14" />
                       Edit
                     </Dropdown.Item>
                     <Dropdown.Item
@@ -663,7 +621,7 @@ export default function QualitiesSection() {
                       }}
                       className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 rounded-lg cursor-pointer outline-hidden hover:bg-red-50 data-[focused]:bg-red-50"
                     >
-                      <TrashIcon />
+                      <TrashBin width="14" height="14" />
                       Delete
                     </Dropdown.Item>
                   </Dropdown.Menu>
@@ -702,9 +660,7 @@ export default function QualitiesSection() {
             variant="primary"
             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium h-10 px-4 cursor-pointer"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="mr-1.5" />
             Add Quality
           </Button>
         </div>

@@ -27,6 +27,8 @@ export interface LocationStat {
 
 export interface MonthPoint {
   month: string
+  /** ISO date of the first day of the month — time-series charts need a real date on the x-axis. */
+  date: string
   catalog: number
   inventory: number
 }
@@ -34,24 +36,6 @@ export interface MonthPoint {
 export interface Trend {
   value: number
   direction: "up" | "down"
-}
-
-export interface RecentCatalogRow {
-  id: string
-  sku: string | null
-  product_name: string | null
-  collection_name: string | null
-  quality_name: string | null
-  is_active: boolean | null
-  created_at: string | null
-}
-
-export interface TopPricedRow {
-  id: string
-  sku: string | null
-  location_name: string | null
-  currency_symbol: string | null
-  price: number
 }
 
 export interface DashboardStats {
@@ -84,8 +68,6 @@ export interface DashboardStats {
   growth: MonthPoint[]
   skuTrend: Trend | null
   pieceTrend: Trend | null
-  recentCatalog: RecentCatalogRow[]
-  topPriced: TopPricedRow[]
 }
 
 const EMPTY_STATS: DashboardStats = {
@@ -118,8 +100,6 @@ const EMPTY_STATS: DashboardStats = {
   growth: [],
   skuTrend: null,
   pieceTrend: null,
-  recentCatalog: [],
-  topPriced: [],
 }
 
 function monthKey(iso: string | null): string | null {
@@ -284,6 +264,7 @@ export function useDashboardStats() {
       const allMonths = Array.from(new Set([...catalogMonthMap.keys(), ...inventoryMonthMap.keys()])).sort()
       const growth: MonthPoint[] = allMonths.slice(-12).map((key) => ({
         month: monthLabel(key),
+        date: `${key}-01`,
         catalog: catalogMonthMap.get(key) ?? 0,
         inventory: inventoryMonthMap.get(key) ?? 0,
       }))
@@ -291,33 +272,6 @@ export function useDashboardStats() {
       const currentMonthKey = allMonths[allMonths.length - 1]
       const skuTrend = currentMonthKey ? periodTrend(totalSkus, catalogMonthMap.get(currentMonthKey) ?? 0) : null
       const pieceTrend = currentMonthKey ? periodTrend(totalPieces, inventoryMonthMap.get(currentMonthKey) ?? 0) : null
-
-      // ── Tables ────────────────────────────────────────────────────────
-      const recentCatalog: RecentCatalogRow[] = [...catalogRows]
-        .filter((r) => r.id)
-        .sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime())
-        .slice(0, 8)
-        .map((r) => ({
-          id: r.id as string,
-          sku: r.sku,
-          product_name: r.product_name,
-          collection_name: r.collection_name,
-          quality_name: r.quality_name,
-          is_active: r.is_active,
-          created_at: r.created_at,
-        }))
-
-      const topPriced: TopPricedRow[] = [...priceRows]
-        .filter((p) => p.id && p.price != null)
-        .sort((a, b) => (b.price ?? 0) - (a.price ?? 0))
-        .slice(0, 8)
-        .map((p) => ({
-          id: p.id as string,
-          sku: p.sku,
-          location_name: p.location_name,
-          currency_symbol: p.currency_symbol,
-          price: p.price ?? 0,
-        }))
 
       const toNameCount = (map: Map<string, { skus: number; pieces: number }>): NameCount[] =>
         Array.from(map.entries())
@@ -372,8 +326,6 @@ export function useDashboardStats() {
         growth,
         skuTrend,
         pieceTrend,
-        recentCatalog,
-        topPriced,
       })
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load dashboard data")

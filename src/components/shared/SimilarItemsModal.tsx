@@ -16,6 +16,7 @@ import {
   type SimilarCatalogResult,
 } from "@/app/actions/similarityActions"
 import type { CatalogMetadataInput } from "@/lib/embeddings/embeddingService"
+import { FileText, Picture, Sparkles } from "@gravity-ui/icons"
 
 interface SimilarItemsModalProps {
   isOpen: boolean
@@ -25,24 +26,6 @@ interface SimilarItemsModalProps {
   targetTitle?: string
   targetMetadata?: CatalogMetadataInput
 }
-
-const SparklesIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-  </svg>
-)
-
-const PhotoIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-  </svg>
-)
-
-const DocumentTextIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-  </svg>
-)
 
 export default function SimilarItemsModal({
   isOpen,
@@ -103,7 +86,7 @@ export default function SimilarItemsModal({
                 <div className="flex items-center justify-between w-full">
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                      <SparklesIcon />
+                      <Sparkles width="18" height="18" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-50">
@@ -131,7 +114,7 @@ export default function SimilarItemsModal({
                       </div>
                     ) : (
                       <div className="w-12 h-12 rounded-lg bg-amber-100 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800 flex items-center justify-center text-amber-600">
-                        <SparklesIcon />
+                        <Sparkles width="18" height="18" />
                       </div>
                     )}
                     <div>
@@ -179,7 +162,7 @@ export default function SimilarItemsModal({
                               : "bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
                           }`}
                         >
-                          <PhotoIcon />
+                          <Picture className="mr-1.5" />
                           Visual Pattern Matches ({imageMatches.length})
                         </button>
                         <button
@@ -191,7 +174,7 @@ export default function SimilarItemsModal({
                               : "bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-800"
                           }`}
                         >
-                          <DocumentTextIcon />
+                          <FileText className="mr-1.5" />
                           Catalog Data Matches ({catalogMatches.length})
                         </button>
                       </div>

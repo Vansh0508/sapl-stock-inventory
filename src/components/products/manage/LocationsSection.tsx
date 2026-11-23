@@ -21,6 +21,7 @@ import FormAlert from "@/components/shared/FormAlert"
 import { useLocations, type LocationWithCurrency } from "@/hooks/useLocations"
 import { useCurrencies } from "@/hooks/useCurrencies"
 import ScrollerShadow from "@/components/ui/ScrollerShadow"
+import { Check as CheckIcon, ChevronDown, Plus, TriangleExclamation } from "@gravity-ui/icons"
 
 const columnHelper = createColumnHelper<LocationWithCurrency>()
 
@@ -216,18 +217,7 @@ export default function LocationsSection() {
             variant="primary"
             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium h-10 px-4 cursor-pointer"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="mr-1.5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="mr-1.5" />
             Add Location
           </Button>
         </div>
@@ -299,9 +289,7 @@ export default function LocationsSection() {
                                 {currencies.find(c => c.id === field.value)?.currency_name || (isCurrenciesLoading ? "Loading currencies..." : "Select currency")}
                               </Select.Value>
                               <Select.Indicator className="text-zinc-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                </svg>
+                                <ChevronDown />
                               </Select.Indicator>
                             </Select.Trigger>
                             <Select.Popover className="bg-white border border-zinc-200 shadow-xl rounded-2xl overflow-hidden p-1.5 min-w-[280px] z-50 animate-in fade-in-50 slide-in-from-top-1 duration-100">
@@ -315,9 +303,7 @@ export default function LocationsSection() {
                                     >
                                       <span>{c.currency_name} ({c.symbol})</span>
                                       {field.value === c.id && (
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-indigo-600">
-                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                        </svg>
+                                        <CheckIcon className="text-indigo-600" />
                                       )}
                                     </ListBoxItem>
                                   ))}
@@ -365,22 +351,7 @@ export default function LocationsSection() {
               {({ close }) => (
                 <>
                   <Modal.Header className="flex gap-2 items-center text-red-600 border-b border-zinc-100">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="20"
-                      height="20"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="text-red-500"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                      />
-                    </svg>
+                    <TriangleExclamation width="20" height="20" className="text-red-500" />
                     Delete Location?
                   </Modal.Header>
                   <Modal.Body className="py-6">

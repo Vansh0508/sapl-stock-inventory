@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { useInventory, type InventoryRowWithDetails } from "@/hooks/useInventory"
 import { getThumbnailUrl } from "@/lib/supabase/storage"
 import PriceGrid from "./PriceGrid"
+import { PencilToSquare, Plus, Tag } from "@gravity-ui/icons"
 
 interface NestedInventoryTableProps {
   catalogId: string
@@ -21,25 +22,6 @@ interface NestedInventoryTableProps {
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
 }
-
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-
-const EditIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-  </svg>
-)
-
-const TagIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
-  </svg>
-)
 
 const LABEL_COL_WIDTH = 110
 const ITEM_COL_WIDTH = 230
@@ -163,7 +145,7 @@ export default function NestedInventoryTable({
                 style={{ gridColumn: rows.length + 2, gridRow: "1 / span 5" }}
                 aria-label="Add inventory piece"
               >
-                <PlusIcon />
+                <Plus />
                 <span className="text-[10px] font-medium [writing-mode:vertical-rl]">Add</span>
               </button>
 
@@ -238,7 +220,7 @@ export default function NestedInventoryTable({
                     className="p-1.5 rounded-lg text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50/50 transition-all cursor-pointer"
                     aria-label="Edit inventory piece"
                   >
-                    <EditIcon />
+                    <PencilToSquare width="14" height="14" />
                   </button>
                   <button
                     type="button"
@@ -250,7 +232,7 @@ export default function NestedInventoryTable({
                     aria-label={row.is_sold ? "Mark as in stock" : "Mark as sold"}
                     title={row.is_sold ? "Mark as in stock" : "Mark as sold"}
                   >
-                    <TagIcon />
+                    <Tag width="14" height="14" />
                   </button>
                 </div>
               ))}
@@ -277,7 +259,7 @@ export default function NestedInventoryTable({
             onClick={() => onAddInventory(catalogId)}
             className="mt-2 mb-1 w-full flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50/60 transition-all text-xs font-medium border border-dashed border-zinc-200 hover:border-indigo-300 cursor-pointer bg-white"
           >
-            <PlusIcon />
+            <Plus />
             Add Inventory
           </button>
         )}

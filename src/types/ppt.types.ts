@@ -2,48 +2,6 @@
 // PPT Generator — shared types
 // ──────────────────────────────────────────────────────────
 
-/** One physical, serialized piece under a SKU (size). */
-export interface PptSerialEntry {
-  inventoryId: string
-  serialNumber: string
-  locationName: string | null
-  imageUrls: string[]
-}
-
-/** One SKU (= one Product Code + one size). */
-export interface PptSkuGroup {
-  catalogId: string
-  sku: string
-  sizeLabel: string | null
-  serials: PptSerialEntry[]
-}
-
-/** One Product Code — the parent of all its sizes' SKUs. */
-export interface PptProductCodeGroup {
-  productCode: string
-  productName: string | null
-  productTypeId: string | null
-  qualityName: string | null
-  qualityId: string | null
-  designName: string | null
-  designId: string | null
-  collectionName: string | null
-  collectionId: string | null
-  constructionName: string | null
-  constructionId: string | null
-  colorNames: string | null
-  colorCodes: string | null
-  isActive: boolean
-  skus: PptSkuGroup[]
-  /** Pooled images across every serial number under this Product Code. */
-  allImageUrls: string[]
-  /** First available image — used for the grid card thumbnail. */
-  coverImageUrl: string | null
-  minPrice: number | null
-  maxPrice: number | null
-  currencySymbol: string | null
-}
-
 /** A serial number staged into a wishlist workspace, flattened for PPT export. */
 export interface PptWishlistItem {
   inventoryId: string
@@ -59,13 +17,6 @@ export interface PptWishlistItem {
   colorNames: string | null
   folder?: string | null
   imageUrl: string | null
-}
-
-export interface PptWorkspace {
-  id: string
-  name: string
-  createdAt: string
-  items: PptWishlistItem[]
 }
 
 export type PptSizeType = "ft" | "cm"

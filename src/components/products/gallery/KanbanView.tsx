@@ -14,6 +14,7 @@ import { getThumbnailUrl } from "@/lib/supabase/storage"
 import CardStack from "@/components/shared/CardStack"
 import type { GalleryInventoryItem } from "@/hooks/useGalleryCatalog"
 import type { RowHeight } from "@/types/app.types"
+import { Picture } from "@gravity-ui/icons"
 
 interface KanbanViewProps {
   items: GalleryInventoryItem[]
@@ -198,11 +199,7 @@ const KanbanCard = memo(({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1" className="text-zinc-200" aria-hidden="true">
-                  <rect x="3" y="3" width="18" height="18" rx="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21,15 16,10 5,21" />
-                </svg>
+                <Picture width="24" height="24" className="text-zinc-200" aria-hidden="true" />
               </div>
             )}
             {item.location_name && (

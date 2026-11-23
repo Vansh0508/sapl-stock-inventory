@@ -32,15 +32,16 @@ const GALLERY_COLUMNS: ToolbarColumn[] = [
 
 // ─── View modes (text-only, no icons) ────────────────────────────────────────
 
-// Grid and Gallery are temporarily hidden from the switcher (not removed) — flip `hidden` to bring them back.
+// Grid, Gallery and Kanban are temporarily hidden from the switcher (not removed) — flip `hidden` to bring them back.
 const VIEW_MODES: { id: ViewMode; label: string; hidden?: boolean }[] = [
   { id: "grid", label: "Grid", hidden: true },
   { id: "gallery", label: "Gallery", hidden: true },
-  { id: "kanban", label: "Kanban" },
+  { id: "kanban", label: "Kanban", hidden: true },
   { id: "record", label: "Record" },
 ]
 
 const VISIBLE_VIEW_MODES = VIEW_MODES.filter((mode) => !mode.hidden)
+const DEFAULT_VIEW_MODE = VISIBLE_VIEW_MODES[0].id
 
 // ─── GalleryTab ───────────────────────────────────────────────────────────────
 
@@ -64,12 +65,13 @@ export default function GalleryTab() {
     return () => window.removeEventListener("keydown", onKey)
   }, [openSearch])
 
-  // Redirect away from a hidden view mode left over from persisted state
+  // A hidden view mode left over from persisted state renders as the default immediately (so the
+  // hidden view never mounts), and the store is corrected to match.
+  const isHiddenView = !!VIEW_MODES.find((mode) => mode.id === galleryView)?.hidden
+  const activeView: ViewMode = isHiddenView ? DEFAULT_VIEW_MODE : galleryView
   useEffect(() => {
-    if (VIEW_MODES.find((mode) => mode.id === galleryView)?.hidden) {
-      setGalleryView("kanban")
-    }
-  }, [galleryView, setGalleryView])
+    if (isHiddenView) setGalleryView(DEFAULT_VIEW_MODE)
+  }, [isHiddenView, setGalleryView])
 
   // Selected item for Record standalone view
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -79,13 +81,13 @@ export default function GalleryTab() {
 
   const handleCardClick = useCallback(
     (item: GalleryInventoryItem) => {
-      if (galleryView === "record") {
+      if (activeView === "record") {
         setSelectedId(item.id)
       } else {
         setModalItem(item)
       }
     },
-    [galleryView]
+    [activeView]
   )
 
   const handleModalNavigate = useCallback(
@@ -98,7 +100,7 @@ export default function GalleryTab() {
 
   const sharedProps = { items, isLoading, rowHeight, onCardClick: handleCardClick, refetch }
 
-  const isRecordView = galleryView === "record"
+  const isRecordView = activeView === "record"
 
   return (
     <div className={cn("flex flex-col flex-1 overflow-hidden bg-zinc-50/30", isRecordView && "h-full")}>
@@ -108,7 +110,7 @@ export default function GalleryTab() {
           {/* View mode switcher — HeroUI Tabs (text-only, no icons) */}
           <Tabs
             variant="secondary"
-            selectedKey={galleryView}
+            selectedKey={activeView}
             onSelectionChange={(key: Key) => setGalleryView(key as ViewMode)}
           >
             <Tabs.ListContainer>
@@ -145,17 +147,17 @@ export default function GalleryTab() {
         <div className={cn("flex-1 min-h-0", isRecordView ? "overflow-hidden" : "overflow-auto")}>
           <AnimatePresence mode="wait">
             <motion.div
-              key={galleryView}
+              key={activeView}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.16, ease: "easeOut" }}
               className={cn(isRecordView ? "h-full" : "")}
             >
-              {galleryView === "grid" && <GridView {...sharedProps} />}
-              {galleryView === "gallery" && <GalleryView {...sharedProps} />}
-              {galleryView === "kanban" && <KanbanView {...sharedProps} />}
-              {galleryView === "record" && (
+              {activeView === "grid" && <GridView {...sharedProps} />}
+              {activeView === "gallery" && <GalleryView {...sharedProps} />}
+              {activeView === "kanban" && <KanbanView {...sharedProps} />}
+              {activeView === "record" && (
                 <RecordView
                   items={items}
                   isLoading={isLoading}

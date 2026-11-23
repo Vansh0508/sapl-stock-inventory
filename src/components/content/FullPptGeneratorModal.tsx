@@ -9,6 +9,7 @@ import type { PptConfig, PptDetailField, PptFolderFilter, PptGroupByField, PptIm
 import { PPT_DETAIL_FIELDS, PPT_FOLDER_FILTERS, PPT_GROUP_BY_OPTIONS, PPT_IMAGE_QUALITY_OPTIONS, PPT_LAYOUT_VARIANTS, DEFAULT_PPT_CONFIG } from "@/types/ppt.types"
 import { cn } from "@/lib/utils"
 import PptAssetPickerModal from "./PptAssetPickerModal"
+import { ArrowDownToLine, ArrowLeft, ArrowRight, Check, File as FileIcon } from "@gravity-ui/icons"
 
 interface StorageFile {
   name: string
@@ -301,9 +302,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
           <header className="h-16 border-b border-zinc-200 bg-white px-6 flex items-center justify-between shrink-0 z-10 shadow-3xs">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                </svg>
+                <FileIcon width="18" height="18" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -357,9 +356,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                   </>
                 ) : (
                   <>
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5" />
-                    </svg>
+                    <ArrowDownToLine />
                     <span>Generate PPT ({eligibleSelectedFiles.length} Assets)</span>
                   </>
                 )}
@@ -552,9 +549,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                             >
                               <span>{opt.label}</span>
                               {isActive && (
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
+                                <Check width="14" height="14" />
                               )}
                             </button>
                           )
@@ -1024,9 +1019,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                       isDisabled={isGenerating}
                       className="bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-xl text-xs px-4 h-9 font-bold cursor-pointer transition-all flex items-center gap-1.5"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-                      </svg>
+                      <ArrowLeft width="14" height="14" />
                       <span>Back to {activeTab === "preview" ? "Cover & Logo" : "Shot & Group Config"}</span>
                     </Button>
                   )}
@@ -1055,9 +1048,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                       className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs px-6 h-9 font-bold cursor-pointer transition-all shadow-xs flex items-center gap-2"
                     >
                       <span>Proceed to {activeTab === "config" ? "Cover & Logo" : "Slides Preview"}</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
-                      </svg>
+                      <ArrowRight width="14" height="14" />
                     </Button>
                   ) : (
                     <Button
@@ -1073,9 +1064,7 @@ export default function FullPptGeneratorModal({ isOpen, onClose, selectedFiles }
                         </>
                       ) : (
                         <>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5" />
-                          </svg>
+                          <ArrowDownToLine />
                           <span>Generate & Export Presentation ({eligibleSelectedFiles.length} Assets)</span>
                         </>
                       )}

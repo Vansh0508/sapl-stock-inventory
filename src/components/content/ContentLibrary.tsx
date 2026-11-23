@@ -1,16 +1,30 @@
 "use client"
 
-import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+import { createContext, memo, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
+import { AnimatePresence } from "motion/react"
 import Image from "next/image"
-import { Button, Checkbox, Dropdown, Popover, ScrollShadow, Tooltip, toast } from "@heroui/react"
+import { Button, Checkbox, Dropdown, ScrollShadow, Tooltip, toast } from "@heroui/react"
 import type { RenderComponentProps } from "masonic"
 import { supabase } from "@/lib/supabase/client"
-import { uploadImage, moveImage, getPublicUrl, getThumbnailUrl, getOriginalPublicUrl, listFolder, type StorageListItem } from "@/lib/supabase/storage"
-import SearchBar from "@/components/shared/SearchBar"
+import { ensureFabricsFolders, uploadImage, moveImage, getPublicUrl, getThumbnailUrl, getOriginalPublicUrl, listFolder, type StorageListItem } from "@/lib/supabase/storage"
+import SearchToggle from "@/components/shared/SearchToggle"
 import SimilarItemsModal from "@/components/shared/SimilarItemsModal"
 import { cn, getFolderForFilename } from "@/lib/utils"
-import { type FolderKey, folderToSlug } from "@/lib/content-folders"
+import {
+  FOLDER_KEYS,
+  type FabricFolderKey,
+  type FolderKey,
+  type MediaOrganizedFolder,
+  folderFromStoragePath,
+  folderToSlug,
+  getFileStoragePath,
+  getFolderDisplayName,
+  getFolderFullLabel,
+  getFolderStoragePath,
+  isFabricFolder,
+  isVisibleStorageItem,
+} from "@/lib/content-folders"
 import { useDebouncedValue } from "@/hooks/useDebouncedValue"
 import { useContentViewsStore, type ContentFilterConfig } from "@/stores/contentViewsStore"
 import ViewsBar from "./ViewsBar"
@@ -18,21 +32,22 @@ import { MasonryGrid } from "./MasonryGrid"
 import BulkMoveParameterModal from "./BulkMoveParameterModal"
 import FullPptGeneratorModal from "./FullPptGeneratorModal"
 import UploadSummaryModal from "./UploadSummaryModal"
+import AssetDetailsPanel from "./AssetDetailsPanel"
+import { ArrowDownToLine, ArrowLeft, ArrowRightArrowLeft, ArrowUpFromLine, ChevronDown, ChevronRight, File as FileIcon, Folder as FolderIcon, PlayFill, Sliders, TriangleExclamation } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 60
-const ORGANIZED_FOLDERS = ["Head", "Floor", "Corner", "Closeup", "Tag"] as const
-type OrganizedFolder = (typeof ORGANIZED_FOLDERS)[number]
+type MoveTargetFolder = MediaOrganizedFolder | FabricFolderKey
 
 /**
  * Paginates through an entire folder in batches to compute the exact asset count
  * without capping at 1000+.
  */
 async function fetchExactFolderCount(folder: FolderKey): Promise<number> {
-  const path = folder === "Unorganized" ? "media" : `media/${folder}`
+  const path = getFolderStoragePath(folder)
   let total = 0
   let offset = 0
   const batchSize = 1000
@@ -41,7 +56,7 @@ async function fetchExactFolderCount(folder: FolderKey): Promise<number> {
     const items = await listFolder("images", path, { limit: batchSize, offset })
     if (items.length === 0) break
 
-    const validItems = folder === "Unorganized" ? items.filter((i) => i.id !== null) : items
+    const validItems = items.filter(isVisibleStorageItem)
     total += validItems.length
 
     if (items.length < batchSize) break
@@ -92,11 +107,6 @@ function formatBytes(bytes?: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
 }
 
-function folderFromStoragePath(path: string): FolderKey {
-  const segment = path.split("/")[1]
-  return (ORGANIZED_FOLDERS as readonly string[]).includes(segment) ? (segment as OrganizedFolder) : "Unorganized"
-}
-
 interface FolderNameMatch {
   item: StorageListItem
   folder: FolderKey
@@ -112,7 +122,7 @@ async function scanFolderForNameMatches(
   folder: FolderKey,
   query: string
 ): Promise<{ matches: FolderNameMatch[]; truncated: boolean }> {
-  const path = folder === "Unorganized" ? "media" : `media/${folder}`
+  const path = getFolderStoragePath(folder)
   const lowerQuery = query.toLowerCase()
   const matches: FolderNameMatch[] = []
   let offset = 0
@@ -122,12 +132,12 @@ async function scanFolderForNameMatches(
     if (items.length === 0) break
 
     for (const item of items) {
-      if (item.id === null) continue // virtual subfolder entry
+      if (!isVisibleStorageItem(item)) continue // skip virtual subfolders & placeholders
       if (item.name.toLowerCase().includes(lowerQuery)) {
         matches.push({
           item,
           folder,
-          storagePath: folder === "Unorganized" ? `media/${item.name}` : `media/${folder}/${item.name}`,
+          storagePath: getFileStoragePath(folder, item.name),
         })
       }
     }
@@ -156,30 +166,6 @@ const folderPageCache = new Map<string, FolderCacheEntry>()
 // ──────────────────────────────────────────────────────────
 // Icons
 // ──────────────────────────────────────────────────────────
-
-const UploadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-  </svg>
-)
-
-const FolderIcon = ({ className }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className={className}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z" />
-  </svg>
-)
-
-const ChevronRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-  </svg>
-)
-
-const ArrowLeftIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-  </svg>
-)
 
 
 // ──────────────────────────────────────────────────────────
@@ -263,23 +249,28 @@ interface AssetTileProps {
   file: StorageFile
   index?: number
   isSelected: boolean
+  /** This tile's details are open in the side panel. */
+  isActive: boolean
   showFolderBadge: boolean
   visibleTooltipParams: Set<string>
   onToggleSelect: (storagePath: string) => void
   onFindSimilar: (file: StorageFile) => void
+  onOpenDetails: (file: StorageFile) => void
 }
 
 const AssetTile = memo(
-  function AssetTile({ file, index, isSelected, showFolderBadge, visibleTooltipParams, onToggleSelect, onFindSimilar }: AssetTileProps) {
+  function AssetTile({ file, index, isSelected, isActive, showFolderBadge, visibleTooltipParams, onToggleSelect, onFindSimilar, onOpenDetails }: AssetTileProps) {
     const [imageLoaded, setImageLoaded] = useState(false)
     const isVideo = file.metadata?.mimetype?.startsWith("video/")
     const isAboveTheFold = typeof index === "number" && index < 6
 
     return (
       <div
+        data-storage-path={file.storagePath}
         className={cn(
           "group relative rounded-2xl overflow-hidden border border-zinc-200 bg-white shadow-3xs hover:shadow-sm hover:border-zinc-300 transition-all flex flex-col duration-200",
-          isSelected && "ring-3 ring-indigo-500/35 border-indigo-400 bg-indigo-50/5"
+          isSelected && "ring-3 ring-indigo-500/35 border-indigo-400 bg-indigo-50/5",
+          isActive && !isSelected && "ring-2 ring-zinc-900/70 border-zinc-900"
         )}
       >
         {/* Checkbox Overlay */}
@@ -297,13 +288,21 @@ const AssetTile = memo(
         <Tooltip closeDelay={0} delay={0}>
           <Tooltip.Trigger>
             <div
-              className="relative w-full aspect-[3/4] overflow-hidden bg-zinc-100"
+              role="button"
+              tabIndex={0}
+              aria-label={`View details for ${file.name}`}
+              onClick={() => onOpenDetails(file)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault()
+                  onOpenDetails(file)
+                }
+              }}
+              className="relative w-full aspect-[3/4] overflow-hidden bg-zinc-100 cursor-pointer"
             >
               {isVideo ? (
                 <div className="flex items-center justify-center bg-zinc-950 aspect-video">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" fill="currentColor" viewBox="0 0 24 24" className="text-white opacity-80">
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
+                  <PlayFill width="36" height="36" className="text-white opacity-80" />
                 </div>
               ) : (
                 <>
@@ -325,9 +324,7 @@ const AssetTile = memo(
                   {/* Hidden per user request: Hover Sparkles Find Similar Badge Overlay */}
                   {/* <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     <span className="px-3 py-1.5 bg-amber-500 text-white text-xs font-bold rounded-xl shadow-lg flex items-center gap-1.5 transform group-hover:scale-105 transition-transform">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
+                      <SparklesIcon width="14" height="14" />
                       Find Similar
                     </span>
                   </div> */}
@@ -402,7 +399,7 @@ const AssetTile = memo(
           <div className="flex flex-col gap-0.5 min-w-0">
             <span className="font-mono text-[11px] text-zinc-900 font-bold truncate leading-tight">{file.name}</span>
             {showFolderBadge && (
-              <span className="text-[9px] bg-zinc-100 text-zinc-500 font-bold uppercase px-1.5 py-0.5 rounded-sm w-fit mt-1">{file.folder}</span>
+              <span className="text-[9px] bg-zinc-100 text-zinc-500 font-bold uppercase px-1.5 py-0.5 rounded-sm w-fit mt-1">{getFolderFullLabel(file.folder)}</span>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
@@ -414,9 +411,7 @@ const AssetTile = memo(
               title="Find similar pattern & data items"
               aria-label={`Find similar to ${file.name}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-              </svg>
+              <SparklesIcon width="14" height="14" />
             </button> */}
             <button
               type="button"
@@ -441,9 +436,7 @@ const AssetTile = memo(
               title="Download original size"
               aria-label={`Download original ${file.name}`}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M12 3v13.5m0 0l-4.5-4.5M12 16.5l4.5-4.5" />
-              </svg>
+              <ArrowDownToLine width="14" height="14" />
             </button>
 
           </div>
@@ -454,16 +447,19 @@ const AssetTile = memo(
   (prev, next) =>
     prev.file === next.file &&
     prev.isSelected === next.isSelected &&
+    prev.isActive === next.isActive &&
     prev.showFolderBadge === next.showFolderBadge &&
     prev.visibleTooltipParams === next.visibleTooltipParams
 )
 
 interface MasonryItemContextValue {
   selectedNames: Set<string>
+  activeDetailPath: string | null
   hasQuery: boolean
   visibleTooltipParams: Set<string>
   onToggleSelect: (storagePath: string) => void
   onFindSimilar: (file: StorageFile) => void
+  onOpenDetails: (file: StorageFile) => void
 }
 
 const MasonryItemContext = createContext<MasonryItemContextValue | null>(null)
@@ -476,10 +472,12 @@ function AssetMasonryItem({ data, index }: RenderComponentProps<StorageFile>) {
       file={data}
       index={index}
       isSelected={data.storagePath ? ctx.selectedNames.has(data.storagePath) : false}
+      isActive={!!data.storagePath && data.storagePath === ctx.activeDetailPath}
       showFolderBadge={ctx.hasQuery}
       visibleTooltipParams={ctx.visibleTooltipParams}
       onToggleSelect={ctx.onToggleSelect}
       onFindSimilar={ctx.onFindSimilar}
+      onOpenDetails={ctx.onOpenDetails}
     />
   )
 }
@@ -584,11 +582,19 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null)
 
   // Dashboard counts (root view only) — instant from local/in-memory cache, background revalidated
-  const [folderCounts, setFolderCounts] = useState<Record<string, { count: number; capped: boolean }>>(getInitialFolderCounts)
-  const [isCountsLoading, setIsCountsLoading] = useState(() => {
-    if (currentFolder !== "root") return false
-    return Object.keys(getInitialFolderCounts()).length === 0
-  })
+  // Starts empty on both server and client so hydration matches (the localStorage cache doesn't exist
+  // during SSR); the cache is applied in a layout effect, i.e. before first paint, so there's no flash.
+  const [folderCounts, setFolderCounts] = useState<Record<string, { count: number; capped: boolean }>>({})
+  const [isCountsLoading, setIsCountsLoading] = useState(currentFolder === "root")
+
+  useLayoutEffect(() => {
+    const cached = getInitialFolderCounts()
+    if (Object.keys(cached).length === 0) return
+    // Intentional: browser-only cache applied right after hydration (see comment above)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFolderCounts((prev) => (Object.keys(prev).length === 0 ? cached : prev))
+    setIsCountsLoading(false)
+  }, [])
 
   // Search — the raw query drives an instant local pre-filter every keystroke (cheap, in-memory),
   // while the debounced value triggers the authoritative full search once typing settles.
@@ -604,6 +610,8 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   const [isMigrating, setIsMigrating] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedUploadFiles, setSelectedUploadFiles] = useState<File[]>([])
+  // Image whose details are open in the right-hand side panel
+  const [detailFile, setDetailFile] = useState<StorageFile | null>(null)
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false)
 
   const goToFolder = useCallback((folder: FolderKey | "root") => {
@@ -611,28 +619,31 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   }, [router])
 
   // ── Fetch one page of a single folder from storage + join details for that page only ──
-  const fetchFolderPage = useCallback(async (folder: FolderKey, offset: number, search?: string): Promise<StorageFile[]> => {
-    const path = folder === "Unorganized" ? "media" : `media/${folder}`
+  const fetchFolderPage = useCallback(async (folder: FolderKey, offset: number, search?: string): Promise<{ files: StorageFile[]; rawCount: number }> => {
+    const path = getFolderStoragePath(folder)
     const items = await listFolder("images", path, { limit: PAGE_SIZE, offset, search })
     const withPaths = items
-      .filter((item) => item.id !== null) // skip virtual subfolder entries
+      .filter(isVisibleStorageItem) // skip virtual subfolder entries & placeholders
       .map((item) => ({
         item,
-        storagePath: folder === "Unorganized" ? `media/${item.name}` : `media/${folder}/${item.name}`,
+        storagePath: getFileStoragePath(folder, item.name),
       }))
 
     const details = await resolveDetails(withPaths.map((w) => w.storagePath))
 
-    return withPaths.map(({ item, storagePath }) => ({
-      name: item.name,
-      id: item.id,
-      created_at: item.created_at,
-      metadata: item.metadata ? { size: item.metadata.size, mimetype: item.metadata.mimetype } : undefined,
-      storagePath,
-      publicUrl: getPublicUrl("images", storagePath),
-      folder,
-      details: details[storagePath] ?? null,
-    }))
+    return {
+      rawCount: items.length,
+      files: withPaths.map(({ item, storagePath }) => ({
+        name: item.name,
+        id: item.id,
+        created_at: item.created_at,
+        metadata: item.metadata ? { size: item.metadata.size, mimetype: item.metadata.mimetype } : undefined,
+        storagePath,
+        publicUrl: getPublicUrl("images", storagePath),
+        folder,
+        details: details[storagePath] ?? null,
+      })),
+    }
   }, [resolveDetails])
 
   // ── Initial page load — only runs on a genuine cache miss, since a cache hit is already
@@ -641,21 +652,26 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     if (currentFolder === "root" || cachedEntry) return
     let cancelled = false
 
-    fetchFolderPage(currentFolder, 0)
-      .then((page) => {
+    const loadInitial = async () => {
+      try {
+        if (isFabricFolder(currentFolder)) {
+          await ensureFabricsFolders()
+        }
+        const { files: page, rawCount } = await fetchFolderPage(currentFolder, 0)
         if (cancelled) return
         setFiles(page)
-        offsetRef.current = page.length
-        setHasMore(page.length === PAGE_SIZE)
-      })
-      .catch((e) => {
+        offsetRef.current = rawCount
+        setHasMore(rawCount === PAGE_SIZE)
+      } catch (e) {
         if (cancelled) return
         console.error(e)
         toast.danger("Failed to load folder contents")
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setIsLoading(false)
-      })
+      }
+    }
+
+    loadInitial()
 
     return () => {
       cancelled = true
@@ -679,13 +695,13 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     if (currentFolder === "root" || isLoadingMore || !hasMore || hasQuery) return
     setIsLoadingMore(true)
     try {
-      const page = await fetchFolderPage(currentFolder, offsetRef.current)
+      const { files: page, rawCount } = await fetchFolderPage(currentFolder, offsetRef.current)
       setFiles((prev) => {
         const existing = new Set(prev.map((f) => f.storagePath))
         return [...prev, ...page.filter((f) => !existing.has(f.storagePath))]
       })
-      offsetRef.current += page.length
-      setHasMore(page.length === PAGE_SIZE)
+      offsetRef.current += rawCount
+      setHasMore(rawCount === PAGE_SIZE)
     } catch (e) {
       console.error(e)
       toast.danger("Failed to load more assets")
@@ -699,11 +715,13 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     if (currentFolder !== "root") return
     let cancelled = false
 
-    const allKeys: FolderKey[] = [...ORGANIZED_FOLDERS, "Unorganized"]
+    const allKeys: FolderKey[] = [...FOLDER_KEYS]
     let completed = 0
+    const fabricsReady = ensureFabricsFolders()
 
     allKeys.forEach(async (folder) => {
       try {
+        if (isFabricFolder(folder)) await fabricsReady
         const count = await fetchExactFolderCount(folder)
         if (cancelled) return
         setFolderCounts((prev) => {
@@ -738,7 +756,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     const token = ++searchTokenRef.current
     setIsSearchLoading(true)
     try {
-      const scopeFolders: FolderKey[] = currentFolder === "root" ? [...ORGANIZED_FOLDERS, "Unorganized"] : [currentFolder]
+      const scopeFolders: FolderKey[] = currentFolder === "root" ? [...FOLDER_KEYS] : [currentFolder]
 
       // 1. Run parallel search queries across DB catalog metadata, DB image paths, and folder storage
       const [nameMatchResults, metaRes, imgPathRes] = await Promise.all([
@@ -936,9 +954,9 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
         return matchedFiles
       } else {
         // Folder-only or serialCounts-only filter or empty config
-        const targetFolders = (folders && folders.length > 0 ? folders : [...ORGANIZED_FOLDERS, "Unorganized"]) as FolderKey[]
+        const targetFolders = (folders && folders.length > 0 ? folders : [...FOLDER_KEYS]) as FolderKey[]
         const pages = await Promise.all(targetFolders.map((f) => fetchFolderPage(f, 0)))
-        let allFiles = pages.flat()
+        let allFiles = pages.flatMap((p) => p.files)
 
         if (serialCounts && serialCounts.length > 0) {
           allFiles = allFiles.filter((f) =>
@@ -1005,7 +1023,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
     try {
       for (; ;) {
         const items = await listFolder("images", "media", { limit: PAGE_SIZE, offset: 0 })
-        const unorganized = items.filter((i) => i.id !== null)
+        const unorganized = items.filter(isVisibleStorageItem)
         if (unorganized.length === 0) break
 
         let movedAny = false
@@ -1052,7 +1070,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
       // Refresh whatever's currently on screen — the migration may have changed it
       if (currentFolder === "root") {
         setIsCountsLoading(true)
-        const allKeys: FolderKey[] = [...ORGANIZED_FOLDERS, "Unorganized"]
+        const allKeys: FolderKey[] = [...FOLDER_KEYS]
         const entries = await Promise.all(
           allKeys.map(async (folder) => {
             const count = await fetchExactFolderCount(folder)
@@ -1070,10 +1088,10 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
         setIsLoading(true)
         setHasMore(true)
         offsetRef.current = 0
-        const page = await fetchFolderPage(currentFolder, 0)
+        const { files: page, rawCount } = await fetchFolderPage(currentFolder, 0)
         setFiles(page)
-        offsetRef.current = page.length
-        setHasMore(page.length === PAGE_SIZE)
+        offsetRef.current = rawCount
+        setHasMore(rawCount === PAGE_SIZE)
         setIsLoading(false)
       }
     } catch (err) {
@@ -1126,7 +1144,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
 
 
   // ── Bulk move — optimistic: a moved-out file disappears from current view immediately ─────
-  const handleBulkMove = async (targetFolder: OrganizedFolder) => {
+  const handleBulkMove = async (targetFolder: MoveTargetFolder) => {
     const selectedList = Array.from(selectedFilesMap.values())
     const toMove = selectedList.filter((f) => f.folder !== targetFolder)
     if (toMove.length === 0) {
@@ -1134,7 +1152,8 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
       return
     }
 
-    toast.success(`Moving ${toMove.length} file(s) to ${targetFolder}…`)
+    const targetLabel = getFolderFullLabel(targetFolder)
+    toast.success(`Moving ${toMove.length} file(s) to ${targetLabel}…`)
     setFiles((prev) => prev.filter((f) => !toMove.some((m) => m.storagePath === f.storagePath)))
     clearSelection()
 
@@ -1143,7 +1162,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
 
     for (const file of toMove) {
       const oldPath = file.storagePath
-      const newPath = `media/${targetFolder}/${file.name}`
+      const newPath = getFileStoragePath(targetFolder, file.name)
       try {
         await moveImage("images", oldPath, newPath)
         const newPublicUrl = getPublicUrl("images", newPath)
@@ -1157,7 +1176,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
       }
     }
 
-    if (movedCount > 0) toast.success(`Moved ${movedCount} file(s) to ${targetFolder} successfully!`)
+    if (movedCount > 0) toast.success(`Moved ${movedCount} file(s) to ${targetLabel} successfully!`)
     if (failed.length > 0) {
       toast.danger(`Failed to move ${failed.length} file(s) — restoring`)
       setFiles((prev) => [...failed, ...prev])
@@ -1235,13 +1254,37 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
   const masonryContextValue = useMemo<MasonryItemContextValue>(
     () => ({
       selectedNames,
+      activeDetailPath: detailFile?.storagePath ?? null,
       hasQuery,
       visibleTooltipParams,
       onToggleSelect: toggleSelectRow,
       onFindSimilar: handleFindSimilar,
+      onOpenDetails: setDetailFile,
     }),
-    [selectedNames, hasQuery, visibleTooltipParams, toggleSelectRow, handleFindSimilar]
+    [selectedNames, detailFile, hasQuery, visibleTooltipParams, toggleSelectRow, handleFindSimilar]
   )
+
+  // Opening the panel narrows the grid and re-flows its columns; once that settles, bring the
+  // opened tile back into view (it's mounted — masonic only virtualizes off-screen tiles).
+  const detailPath = detailFile?.storagePath ?? null
+  useEffect(() => {
+    if (!detailPath || !scrollElement) return
+    const timer = setTimeout(() => {
+      scrollElement
+        .querySelector<HTMLElement>(`[data-storage-path="${CSS.escape(detailPath)}"]`)
+        ?.scrollIntoView({ block: "nearest", behavior: "smooth" })
+    }, 150)
+    return () => clearTimeout(timer)
+  }, [detailPath, scrollElement])
+
+  // Prev/next in the details panel walk whatever the grid is currently showing
+  const detailIndex = detailFile ? displayFiles.findIndex((f) => f.storagePath === detailFile.storagePath) : -1
+  const showPrevDetail = useCallback(() => {
+    if (detailIndex > 0) setDetailFile(displayFiles[detailIndex - 1])
+  }, [detailIndex, displayFiles])
+  const showNextDetail = useCallback(() => {
+    if (detailIndex >= 0 && detailIndex < displayFiles.length - 1) setDetailFile(displayFiles[detailIndex + 1])
+  }, [detailIndex, displayFiles])
 
   const showResultsGrid = hasQuery || currentFolder !== "root" || isCustomViewActive
   const showDashboardLoading = !hasQuery && currentFolder === "root" && !isCustomViewActive && isCountsLoading && Object.keys(folderCounts).length === 0
@@ -1250,112 +1293,83 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-zinc-50/30">
-      {/* Header bar */}
-      <div className="px-6 py-4 bg-white border-b border-zinc-200/60 flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-zinc-900">Files Library</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button
-            onPress={() => fileInputRef.current?.click()}
-            className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs px-4 h-9 cursor-pointer font-semibold shadow-xs flex items-center"
-          >
-            <UploadIcon />
-            Upload assets
-          </Button>
-          <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
-        </div>
-      </div>
+      {/* Header — title on the left; animated search (same as the products pages), Tooltip Fields and Upload on the right */}
+      <div className="px-6 py-2.5 border-b border-zinc-200/60 flex items-center justify-between shrink-0 bg-white shadow-2xs gap-4">
+        <h1 className="text-lg font-bold text-zinc-900 truncate min-w-0">Files Library</h1>
 
-      {/* Toolbar / Search & Tooltip Parameters Toggle */}
-      <div className="px-6 py-3 border-b border-zinc-200/60 flex items-center justify-between shrink-0 bg-white shadow-2xs gap-4">
-        <SearchBar
-          value={searchQuery}
-          onChange={setSearchQuery}
-          disableShortcut
-          placeholder="Search files globally (by name, serial or SKU)..."
-          className="w-full max-w-md"
-        />
-
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 shrink-0">
           {hasQuery && isSearchLoading && (
-            <span className="text-[11px] text-indigo-500 font-semibold flex items-center gap-1.5 animate-pulse">
+            <span className="text-[11px] text-indigo-500 font-semibold flex items-center gap-1.5 animate-pulse whitespace-nowrap">
               Searching everything…
             </span>
           )}
 
-          {/* Tooltip Parameters Dropdown Switcher */}
-          <Popover>
-            <Popover.Trigger>
-              <button
-                type="button"
-                className="px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-3xs"
-              >
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h9"
-                  />
-                </svg>
-                <span>Tooltip Fields ({visibleTooltipParams.size})</span>
-              </button>
-            </Popover.Trigger>
-            <Popover.Content className="p-3 min-w-[210px] bg-white border border-zinc-200 rounded-2xl shadow-xl z-50">
-              <Popover.Dialog className="flex flex-col gap-2 outline-none">
-                <div className="text-xs font-bold text-zinc-900 pb-1.5 border-b border-zinc-100 flex items-center justify-between">
-                  <span>Tooltip Fields</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (visibleTooltipParams.size === TOOLTIP_PARAM_CONFIG.length) {
-                        setVisibleTooltipParams(new Set())
-                      } else {
-                        setVisibleTooltipParams(new Set(TOOLTIP_PARAM_CONFIG.map((p) => p.key)))
-                      }
-                    }}
-                    className="text-[10px] text-indigo-600 font-bold hover:underline cursor-pointer"
-                  >
-                    {visibleTooltipParams.size === TOOLTIP_PARAM_CONFIG.length ? "Hide All" : "Show All"}
-                  </button>
-                </div>
-                <div className="flex flex-col gap-1 pt-1">
-                  {TOOLTIP_PARAM_CONFIG.map((param) => {
-                    const isChecked = visibleTooltipParams.has(param.key)
-                    return (
-                      <label
-                        key={param.key}
-                        className="flex items-center justify-between px-2.5 py-1.5 rounded-xl text-xs text-zinc-700 hover:bg-zinc-50 cursor-pointer font-medium select-none"
-                      >
-                        <span>{param.label}</span>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {
-                            setVisibleTooltipParams((prev) => {
-                              const next = new Set(prev)
-                              if (next.has(param.key)) next.delete(param.key)
-                              else next.add(param.key)
-                              return new Set(next)
-                            })
-                          }}
-                          className="rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-                        />
-                      </label>
+          <SearchToggle
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search by file name, serial or SKU…"
+            ariaLabel="Search files"
+            expandedWidth={300}
+          />
+
+          {/* Tooltip fields — HeroUI multi-select dropdown; stays open so several fields can be toggled */}
+          <Dropdown>
+            <Dropdown.Trigger
+              aria-label="Choose tooltip fields"
+              className="h-9 px-3 bg-zinc-50 hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all shadow-3xs"
+            >
+              <Sliders width="14" height="14" />
+              <span>Tooltip Fields ({visibleTooltipParams.size})</span>
+              <ChevronDown width="12" height="12" className="text-zinc-400" />
+            </Dropdown.Trigger>
+            <Dropdown.Popover placement="bottom end" className="min-w-[220px]">
+              <Dropdown.Menu aria-label="Tooltip fields" shouldCloseOnSelect={false}>
+                <Dropdown.Section
+                  aria-label="Visible tooltip fields"
+                  selectionMode="multiple"
+                  selectedKeys={visibleTooltipParams}
+                  onSelectionChange={(keys) =>
+                    setVisibleTooltipParams(
+                      keys === "all" ? new Set(TOOLTIP_PARAM_CONFIG.map((p) => p.key)) : new Set(Array.from(keys, String))
                     )
-                  })}
-                </div>
-              </Popover.Dialog>
-            </Popover.Content>
-          </Popover>
+                  }
+                >
+                  {TOOLTIP_PARAM_CONFIG.map((param) => (
+                    <Dropdown.Item key={param.key} id={param.key} textValue={param.label}>
+                      <Dropdown.ItemIndicator />
+                      <span className="text-xs font-medium">{param.label}</span>
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Section>
+                <Dropdown.Section aria-label="Bulk actions" className="border-t border-zinc-100 mt-1 pt-1">
+                  <Dropdown.Item
+                    id="toggle-all"
+                    textValue={visibleTooltipParams.size === TOOLTIP_PARAM_CONFIG.length ? "Hide all" : "Show all"}
+                    onAction={() =>
+                      setVisibleTooltipParams(
+                        visibleTooltipParams.size === TOOLTIP_PARAM_CONFIG.length
+                          ? new Set()
+                          : new Set(TOOLTIP_PARAM_CONFIG.map((p) => p.key))
+                      )
+                    }
+                  >
+                    <span className="text-xs font-semibold text-indigo-600">
+                      {visibleTooltipParams.size === TOOLTIP_PARAM_CONFIG.length ? "Hide all" : "Show all"}
+                    </span>
+                  </Dropdown.Item>
+                </Dropdown.Section>
+              </Dropdown.Menu>
+            </Dropdown.Popover>
+          </Dropdown>
+
+          <Button
+            onPress={() => fileInputRef.current?.click()}
+            className="bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs px-4 h-9 cursor-pointer font-semibold shadow-xs flex items-center"
+          >
+            <ArrowUpFromLine className="mr-1.5" />
+            Upload assets
+          </Button>
+          <input ref={fileInputRef} type="file" multiple accept="image/*,video/*" className="hidden" onChange={handleFileSelect} />
         </div>
       </div>
 
@@ -1368,9 +1382,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
       {hasUnorganized && !hasQuery && (
         <div className="mx-6 mt-4 p-4 bg-amber-50/80 border border-amber-200/60 rounded-xl flex items-center justify-between shadow-3xs animate-pulse">
           <div className="flex items-center gap-3">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-amber-600">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
+            <TriangleExclamation width="20" height="20" className="text-amber-600" />
             <div>
               <h4 className="text-sm font-semibold text-amber-900">
                 Unorganized files detected ({(folderCounts["Unorganized"]?.count ?? 0).toLocaleString()})
@@ -1390,65 +1402,106 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
 
       {/* Main Content View — a single ScrollShadow region so the whole library scrolls as
           one page, with HeroUI's fade shadows cueing when there's more content above/below. */}
-      <ScrollShadow ref={setScrollElement} className="flex-1 py-6" offset={20}>
+      {/* Google-Images-style: the details panel docks to the right and the grid reflows beside it */}
+      <div className="flex-1 flex min-h-0">
+      <ScrollShadow ref={setScrollElement} className="flex-1 min-w-0 py-6" offset={20}>
         {showDashboardLoading ? (
           <div className="flex items-center justify-center h-48 text-sm text-zinc-400 font-medium">Loading asset folders…</div>
         ) : !showResultsGrid ? (
           /* ────────────────────────────────────────────────────────── */
           /* Folder Overview Dashboard                                  */
           /* ────────────────────────────────────────────────────────── */
-          <div className="px-6 flex flex-col gap-6">
-            <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Asset Folders</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-              {/* Folder Cards */}
-              {(
-                [
-                  { name: "Head", desc: "Head shot images (1)", color: "bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100/50" },
-                  { name: "Floor", desc: "Floor shot images (2)", color: "bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100/50" },
-                  { name: "Corner", desc: "Corner shot images (3)", color: "bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100/50" },
-                  { name: "Closeup", desc: "Closeup details (4)", color: "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100/50" },
-                  { name: "Tag", desc: "Original tag shots", color: "bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100/50" },
-                ] as const
-              ).map((f) => (
-                <div
-                  key={f.name}
-                  onClick={() => goToFolder(f.name)}
-                  className={cn(
-                    "p-5 rounded-2xl border border-zinc-200 bg-white hover:border-zinc-300 transition-all cursor-pointer flex flex-col gap-4 shadow-3xs group select-none hover:-translate-y-0.5 duration-200"
-                  )}
-                >
-                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border transition-colors", f.color)}>
-                    <FolderIcon />
+          <div className="px-6 flex flex-col gap-8">
+            <section className="flex flex-col gap-4">
+              <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Asset Folders</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {/* Folder Cards */}
+                {(
+                  [
+                    { name: "Head", desc: "Head shot images (1)", color: "bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100/50" },
+                    { name: "Floor", desc: "Floor shot images (2)", color: "bg-amber-50 border-amber-100 text-amber-700 hover:bg-amber-100/50" },
+                    { name: "Corner", desc: "Corner shot images (3)", color: "bg-rose-50 border-rose-100 text-rose-700 hover:bg-rose-100/50" },
+                    { name: "Closeup", desc: "Closeup details (4)", color: "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100/50" },
+                    { name: "Tag", desc: "Original tag shots", color: "bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100/50" },
+                  ] as const
+                ).map((f) => (
+                  <div
+                    key={f.name}
+                    onClick={() => goToFolder(f.name)}
+                    className={cn(
+                      "p-5 rounded-2xl border border-zinc-200 bg-white hover:border-zinc-300 transition-all cursor-pointer flex flex-col gap-4 shadow-3xs group select-none hover:-translate-y-0.5 duration-200"
+                    )}
+                  >
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border transition-colors", f.color)}>
+                      <FolderIcon width="36" height="36" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors leading-tight">{f.name}</h3>
+                      <p className="text-[11px] text-zinc-400 font-semibold mt-1 uppercase tracking-wide">
+                        {(folderCounts[f.name]?.count ?? 0).toLocaleString()} Assets
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{f.desc}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors leading-tight">{f.name}</h3>
-                    <p className="text-[11px] text-zinc-400 font-semibold mt-1 uppercase tracking-wide">
-                      {(folderCounts[f.name]?.count ?? 0).toLocaleString()} Assets
-                    </p>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{f.desc}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
 
-              {/* Unorganized Folder - only show if there are files in it */}
-              {hasUnorganized && (
-                <div
-                  onClick={() => goToFolder("Unorganized")}
-                  className="p-5 rounded-2xl border border-amber-200 bg-amber-50/20 hover:border-amber-300 transition-all cursor-pointer flex flex-col gap-4 shadow-3xs group select-none hover:-translate-y-0.5 duration-200"
-                >
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-amber-200 bg-amber-50 text-amber-700">
-                    <FolderIcon />
+                {/* Unorganized Folder - only show if there are files in it */}
+                {hasUnorganized && (
+                  <div
+                    onClick={() => goToFolder("Unorganized")}
+                    className="p-5 rounded-2xl border border-amber-200 bg-amber-50/20 hover:border-amber-300 transition-all cursor-pointer flex flex-col gap-4 shadow-3xs group select-none hover:-translate-y-0.5 duration-200"
+                  >
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center border border-amber-200 bg-amber-50 text-amber-700">
+                      <FolderIcon width="36" height="36" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900 group-hover:text-amber-600 transition-colors leading-tight">Unorganized</h3>
+                      <p className="text-[11px] text-amber-600 font-semibold mt-1 uppercase tracking-wide">
+                        {(folderCounts["Unorganized"]?.count ?? 0).toLocaleString()} Assets
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Pending migration folder</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-zinc-900 group-hover:text-amber-600 transition-colors leading-tight">Unorganized</h3>
-                    <p className="text-[11px] text-amber-600 font-semibold mt-1 uppercase tracking-wide">
-                      {(folderCounts["Unorganized"]?.count ?? 0).toLocaleString()} Assets
-                    </p>
-                    <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">Pending migration folder</p>
+                )}
+              </div>
+            </section>
+
+            {/* Fabrics Section (/stub/images/Fabrics) */}
+            <section className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Fabrics</h2>
+                <span className="text-[11px] font-mono text-zinc-400">/stub/images/Fabrics</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {(
+                  [
+                    { key: "Fabrics/Closeup", name: "Closeup", desc: "Fabric closeup details", color: "bg-emerald-50 border-emerald-100 text-emerald-700 hover:bg-emerald-100/50" },
+                    { key: "Fabrics/Head", name: "Head", desc: "Fabric head shot images", color: "bg-indigo-50 border-indigo-100 text-indigo-700 hover:bg-indigo-100/50" },
+                    { key: "Fabrics/Tag", name: "Tag", desc: "Fabric tag shots", color: "bg-purple-50 border-purple-100 text-purple-700 hover:bg-purple-100/50" },
+                    { key: "Fabrics/Texture", name: "Texture", desc: "Fabric texture shots", color: "bg-teal-50 border-teal-100 text-teal-700 hover:bg-teal-100/50" },
+                  ] as const
+                ).map((f) => (
+                  <div
+                    key={f.key}
+                    onClick={() => goToFolder(f.key)}
+                    className={cn(
+                      "p-5 rounded-2xl border border-zinc-200 bg-white hover:border-zinc-300 transition-all cursor-pointer flex flex-col gap-4 shadow-3xs group select-none hover:-translate-y-0.5 duration-200"
+                    )}
+                  >
+                    <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center border transition-colors", f.color)}>
+                      <FolderIcon width="36" height="36" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-zinc-900 group-hover:text-indigo-600 transition-colors leading-tight">{f.name}</h3>
+                      <p className="text-[11px] text-zinc-400 font-semibold mt-1 uppercase tracking-wide">
+                        {(folderCounts[f.key]?.count ?? 0).toLocaleString()} Assets
+                      </p>
+                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug">{f.desc}</p>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            </section>
           </div>
         ) : !isMounted || showSearchLoading || showFolderLoading ? (
           <div className="flex items-center justify-center h-48 text-sm text-zinc-400 font-medium">
@@ -1477,17 +1530,25 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
                     <button onClick={() => goToFolder("root")} className="hover:text-indigo-600 transition-colors cursor-pointer">
                       Folders
                     </button>
-                    <ChevronRightIcon />
-                    <span className="text-zinc-900 font-bold">{currentFolder}</span>
+                    {isFabricFolder(currentFolder) && (
+                      <>
+                        <ChevronRight width="14" height="14" className="text-zinc-400" />
+                        <button onClick={() => goToFolder("root")} className="hover:text-indigo-600 transition-colors cursor-pointer">
+                          Fabrics
+                        </button>
+                      </>
+                    )}
+                    <ChevronRight width="14" height="14" className="text-zinc-400" />
+                    <span className="text-zinc-900 font-bold">{getFolderDisplayName(currentFolder)}</span>
                     {isCustomViewActive && (
                       <>
-                        <ChevronRightIcon />
+                        <ChevronRight width="14" height="14" className="text-zinc-400" />
                         <span className="text-indigo-600 font-bold">View: &quot;{activeView?.name}&quot;</span>
                       </>
                     )}
                     {hasQuery && (
                       <>
-                        <ChevronRightIcon />
+                        <ChevronRight width="14" height="14" className="text-zinc-400" />
                         <span className="text-zinc-900 font-bold">Search results for &quot;{searchQuery}&quot;</span>
                       </>
                     )}
@@ -1500,7 +1561,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
                   onPress={() => goToFolder("root")}
                   className="bg-white hover:bg-zinc-100 text-zinc-700 border border-zinc-200 rounded-xl text-[11px] px-3 h-8 cursor-pointer font-bold shadow-3xs flex items-center gap-1.5"
                 >
-                  <ArrowLeftIcon />
+                  <ArrowLeft />
                   Back to folders
                 </Button>
               )}
@@ -1556,6 +1617,21 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
         )}
       </ScrollShadow>
 
+      <AnimatePresence>
+        {detailFile && (
+          <AssetDetailsPanel
+            file={detailFile}
+            onClose={() => setDetailFile(null)}
+            onSelectFile={setDetailFile}
+            onPrev={showPrevDetail}
+            onNext={showNextDetail}
+            hasPrev={detailIndex > 0}
+            hasNext={detailIndex >= 0 && detailIndex < displayFiles.length - 1}
+          />
+        )}
+      </AnimatePresence>
+      </div>
+
       {/* Bulk Actions Panel at Bottom */}
       {selectedFilesMap.size > 0 && (
         <div className="border-t border-zinc-200 bg-zinc-900 text-white px-6 py-4 flex items-center justify-between shrink-0 shadow-lg z-20">
@@ -1576,9 +1652,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
             <Dropdown>
               <Dropdown.Trigger className="bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 rounded-xl text-xs px-4 h-9 cursor-pointer font-bold transition-all shadow-xs flex items-center gap-1.5">
                 <span>Move to...</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
+                <ChevronDown width="12" height="12" />
               </Dropdown.Trigger>
               <Dropdown.Popover className="rounded-2xl border border-zinc-700 bg-zinc-900 shadow-xl p-1.5 z-50 text-white min-w-[220px]">
                 <Dropdown.Menu aria-label="Select move target type">
@@ -1612,6 +1686,27 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
                       {dest.label}
                     </Dropdown.Item>
                   ))}
+
+                  <Dropdown.Item
+                    id="fabrics-folder-header"
+                    isDisabled
+                    className="px-3 pt-2.5 pb-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-t border-zinc-800 mt-1"
+                  >
+                    <span>🧵 Fabrics Folder Destination:</span>
+                  </Dropdown.Item>
+
+                  {(
+                    [
+                      { key: "Fabrics/Closeup", label: "Fabrics / Closeup" },
+                      { key: "Fabrics/Head", label: "Fabrics / Head" },
+                      { key: "Fabrics/Tag", label: "Fabrics / Tag" },
+                      { key: "Fabrics/Texture", label: "Fabrics / Texture" },
+                    ] as const
+                  ).map((dest) => (
+                    <Dropdown.Item key={dest.key} onPress={() => handleBulkMove(dest.key)} className="hover:bg-zinc-800 px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer pl-6">
+                      {dest.label}
+                    </Dropdown.Item>
+                  ))}
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown>
@@ -1621,9 +1716,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
               onPress={() => setIsParamMoveModalOpen(true)}
               className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs px-4 h-9 font-bold cursor-pointer transition-all shadow-xs flex items-center gap-1.5 active:scale-95"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m-3-15L21 6m0 0l-4.5 4.5M21 6H7.5" />
-              </svg>
+              <ArrowRightArrowLeft width="14" height="14" />
               <span>Shift Details / Move ({selectedFilesMap.size})</span>
             </Button>
 
@@ -1632,9 +1725,7 @@ export default function ContentLibrary({ initialFolder }: ContentLibraryProps) {
               onPress={() => setIsPptModalOpen(true)}
               className="bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs px-4 h-9 font-bold cursor-pointer transition-all shadow-xs flex items-center gap-1.5"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-              </svg>
+              <FileIcon width="14" height="14" />
               <span>Generate PPT ({selectedFilesMap.size})</span>
             </Button>
 

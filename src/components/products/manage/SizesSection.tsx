@@ -23,6 +23,7 @@ import type { Database } from "@/types/database.types"
 import ScrollerShadow from "@/components/ui/ScrollerShadow"
 import ReassignDeleteModal, { type ReassignOption } from "@/components/shared/ReassignDeleteModal"
 import { supabase } from "@/lib/supabase/client"
+import { Check, ChevronDown, CircleInfo, Plus } from "@gravity-ui/icons"
 
 type LengthRow = Database["public"]["Tables"]["lengths"]["Row"]
 type WidthRow = Database["public"]["Tables"]["widths"]["Row"]
@@ -298,18 +299,7 @@ export default function SizesSection() {
             variant="primary"
             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium h-10 px-4 cursor-pointer"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="mr-1.5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="mr-1.5" />
             Add Size
           </Button>
         </div>
@@ -341,9 +331,7 @@ export default function SizesSection() {
 
                     {activeUnit && (
                       <div className="flex items-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-100 rounded-lg">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-indigo-500 shrink-0">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
+                        <CircleInfo width="14" height="14" className="text-indigo-500 shrink-0" />
                         <Typography.Paragraph size="xs" className="text-indigo-700">
                           Both dimensions filtered to{" "}
                           <span className="font-semibold uppercase">{activeUnit}</span> to keep units consistent.
@@ -465,9 +453,7 @@ const FkSelect = ({
               {options.find((o) => o.id === field.value)?.label || placeholder}
             </Select.Value>
             <Select.Indicator className="text-zinc-400">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-              </svg>
+              <ChevronDown />
             </Select.Indicator>
           </Select.Trigger>
           <Select.Popover className="bg-white border border-zinc-200 shadow-xl rounded-2xl overflow-hidden p-1.5 min-w-[280px] z-50 animate-in fade-in-50 slide-in-from-top-1 duration-100">
@@ -481,9 +467,7 @@ const FkSelect = ({
                   >
                     <span>{o.label}</span>
                     {field.value === o.id && (
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-indigo-600">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </svg>
+                      <Check className="text-indigo-600" />
                     )}
                   </ListBoxItem>
                 ))}

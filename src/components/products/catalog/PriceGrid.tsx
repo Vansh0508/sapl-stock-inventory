@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { usePrices, type PriceRow } from "@/hooks/usePrices"
 import type { InventoryRowWithDetails } from "@/hooks/useInventory"
 import PriceModal from "./PriceModal"
+import { Plus } from "@gravity-ui/icons"
 
 interface LocationOption {
   id: string
@@ -22,12 +23,6 @@ interface PriceGridProps {
   /** Whole product has been discontinued — dims the entire grid and blocks edits. */
   isDiscontinued?: boolean
 }
-
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
 
 export default function PriceGrid({ catalogId, rows, isDiscontinued = false }: PriceGridProps) {
   const { prices, isLoading, fetchPrices, upsertPrice } = usePrices(catalogId)
@@ -111,7 +106,7 @@ export default function PriceGrid({ catalogId, rows, isDiscontinued = false }: P
             className="flex items-center gap-1 h-7 px-2.5 rounded-lg text-xs font-medium text-zinc-500 hover:text-indigo-600 hover:bg-indigo-50/60 transition-all cursor-pointer border border-dashed border-zinc-200 hover:border-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed"
             aria-label="Add location row"
           >
-            <PlusIcon />
+            <Plus width="14" height="14" />
             Add Location
           </Dropdown.Trigger>
           <Dropdown.Popover placement="bottom end" className="min-w-[220px]">
@@ -187,7 +182,7 @@ export default function PriceGrid({ catalogId, rows, isDiscontinued = false }: P
                                 className="flex items-center justify-center gap-1 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50/60 transition-all cursor-pointer text-[11px] font-medium h-7 w-full rounded-lg border border-dashed border-zinc-200 hover:border-indigo-300"
                                 aria-label="Add price"
                               >
-                                <PlusIcon />
+                                <Plus width="14" height="14" />
                                 Add
                               </button>
                             )}

@@ -14,6 +14,7 @@ import { useColors } from "@/hooks/useColors"
 import type { Database } from "@/types/database.types"
 import { supabase } from "@/lib/supabase/client"
 import ReassignDeleteModal, { type ReassignOption } from "@/components/shared/ReassignDeleteModal"
+import { Plus } from "@gravity-ui/icons"
 
 type ColorRow = Database["public"]["Tables"]["colors"]["Row"]
 
@@ -231,18 +232,7 @@ export default function ColorsSection() {
             variant="primary"
             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium h-10 px-4 cursor-pointer"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="mr-1.5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="mr-1.5" />
             Add Color
           </Button>
         </div>

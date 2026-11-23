@@ -103,7 +103,7 @@ export const useViewStore = create<ViewState>()(
   groupBy: null,
   rowHeight: "normal",
   hiddenColumns: [],
-  galleryView: "kanban",
+  galleryView: "record",
 
   setSearchQuery: (query) => set({ searchQuery: query }),
   openSearch: () => set({ isSearchOpen: true }),

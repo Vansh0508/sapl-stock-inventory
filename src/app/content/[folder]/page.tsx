@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import ContentLibrary from "@/components/content/ContentLibrary"
-import { slugToFolder } from "@/lib/content-folders"
+import { isFabricFolder, slugToFolder } from "@/lib/content-folders"
 
 export default async function ContentFolderPage({
   params,
@@ -10,7 +10,7 @@ export default async function ContentFolderPage({
   const { folder: slug } = await params
   const folder = slugToFolder(slug)
 
-  if (!folder) notFound()
+  if (!folder || isFabricFolder(folder)) notFound()
 
   return <ContentLibrary initialFolder={folder} />
 }

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { useCatalogStore } from "@/stores/catalogStore"
 import { useViewStore } from "@/stores/viewStore"
+import { Check, ChevronDown } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Types & Column Configuration
@@ -126,18 +127,7 @@ function GridSelect({
           )}
         >
           <span className="truncate flex-1 text-zinc-800">{selectedLabel}</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            className="text-zinc-400 shrink-0 ml-1"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown width="12" height="12" className="text-zinc-400 shrink-0 ml-1" />
         </button>
       </Popover.Trigger>
       <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[200px] z-50 p-0">
@@ -233,18 +223,7 @@ function GridMultiSelect({
           )}
         >
           <span className="truncate flex-1 text-zinc-800">{displayLabel}</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            className="text-zinc-400 shrink-0 ml-1"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown width="12" height="12" className="text-zinc-400 shrink-0 ml-1" />
         </button>
       </Popover.Trigger>
       <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[200px] z-50 p-0">
@@ -290,17 +269,7 @@ function GridMultiSelect({
                         )}
                       >
                         {isSelected && (
-                          <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="8"
-                            height="8"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="white"
-                            strokeWidth="4"
-                          >
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
+                          <Check width="8" height="8" />
                         )}
                       </span>
                       <span className={cn("text-xs truncate", isSelected ? "text-indigo-900 font-semibold" : "text-zinc-700")}>

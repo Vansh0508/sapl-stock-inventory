@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation"
 import { Breadcrumbs } from "@heroui/react"
+import { Bars } from "@gravity-ui/icons"
 
 interface TopNavProps {
   isSidebarOpen: boolean
@@ -63,12 +64,6 @@ function buildCrumbs(pathname: string): Crumb[] {
   if (pathname.startsWith("/content")) {
     return [{ label: "Content" }]
   }
-  if (pathname.startsWith("/tools/ppt-generator")) {
-    return [{ label: "Tools" }, { label: "PPT Generator" }]
-  }
-  if (pathname.startsWith("/tools")) {
-    return [{ label: "Tools" }]
-  }
   return [{ label: "Products" }]
 }
 
@@ -88,22 +83,7 @@ export default function TopNav({ isSidebarOpen, onToggleSidebar }: TopNavProps) 
           aria-label="Toggle navigation menu"
           aria-expanded={isSidebarOpen}
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <line x1="4" y1="6" x2="20" y2="6" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="18" x2="20" y2="18" />
-          </svg>
+          <Bars width="20" height="20" aria-hidden="true" />
         </button>
 
         {/* Breadcrumbs */}

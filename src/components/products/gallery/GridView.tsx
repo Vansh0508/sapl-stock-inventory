@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import { getThumbnailUrl } from "@/lib/supabase/storage"
 import type { GalleryInventoryItem } from "@/hooks/useGalleryCatalog"
 import type { RowHeight } from "@/types/app.types"
+import { Picture } from "@gravity-ui/icons"
 
 interface GridViewProps {
   items: GalleryInventoryItem[]
@@ -84,11 +85,7 @@ function SkeletonCard() {
 function EmptyState() {
   return (
     <div className="col-span-full flex flex-col items-center justify-center py-24 select-none">
-      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="mb-4 text-zinc-300" aria-hidden="true">
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <circle cx="8.5" cy="8.5" r="1.5" />
-        <polyline points="21,15 16,10 5,21" />
-      </svg>
+      <Picture width="40" height="40" className="mb-4 text-zinc-300" aria-hidden="true" />
       <Typography.Paragraph size="sm" weight="medium" className="text-zinc-500">No products found</Typography.Paragraph>
       <Typography.Paragraph size="xs" className="mt-1 text-zinc-400">Try adjusting your filters or search</Typography.Paragraph>
     </div>
@@ -138,11 +135,7 @@ export default function GridView({ items, isLoading, rowHeight, onCardClick }: G
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1" className="text-zinc-200" aria-hidden="true">
-                    <rect x="3" y="3" width="18" height="18" rx="2" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21,15 16,10 5,21" />
-                  </svg>
+                  <Picture width="32" height="32" className="text-zinc-200" aria-hidden="true" />
                 </div>
               )}
               {/* Location badge */}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { Button, Modal, Spinner, Typography } from "@heroui/react"
 import { cn } from "@/lib/utils"
+import { Check, Magnifier, TriangleExclamation } from "@gravity-ui/icons"
 
 export interface ReassignOption {
   id: string
@@ -20,24 +21,6 @@ export interface ReassignDeleteModalProps {
   onReassign: (option: ReassignOption) => Promise<void>
   onDelete: () => Promise<void>
 }
-
-const WarnIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-red-500 shrink-0">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-  </svg>
-)
-
-const SearchIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-zinc-400 shrink-0">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 1116.65 16.65z" />
-  </svg>
-)
-
-const CheckIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-)
 
 export default function ReassignDeleteModal({
   isOpen,
@@ -116,7 +99,7 @@ export default function ReassignDeleteModal({
             {({ close }) => (
               <>
                 <Modal.Header className="flex items-center gap-2.5 text-red-600 border-b border-zinc-100">
-                  <WarnIcon />
+                  <TriangleExclamation width="20" height="20" className="text-red-500 shrink-0" />
                   <span className="font-semibold">Delete {entityType}?</span>
                 </Modal.Header>
 
@@ -156,7 +139,7 @@ export default function ReassignDeleteModal({
 
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <SearchIcon />
+                          <Magnifier width="14" height="14" className="text-zinc-400 shrink-0" />
                         </span>
                         <input
                           type="text"
@@ -189,7 +172,7 @@ export default function ReassignDeleteModal({
                             >
                               <span className="font-mono">{opt.label}</span>
                               {selected?.id === opt.id && (
-                                <span className="text-indigo-600"><CheckIcon /></span>
+                                <span className="text-indigo-600"><Check width="14" height="14" /></span>
                               )}
                             </button>
                           ))

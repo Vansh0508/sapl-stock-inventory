@@ -1,4 +1,10 @@
 import { supabase } from "./client"
+import {
+  CONTENT_STORAGE_BUCKET,
+  EMPTY_FOLDER_PLACEHOLDER,
+  FABRIC_SUBFOLDERS,
+  FABRICS_STORAGE_PREFIX,
+} from "@/lib/content-folders"
 
 export interface StorageListOptions {
   limit?: number
@@ -29,8 +35,14 @@ export async function listFolder(
   return (data ?? []) as StorageListItem[]
 }
 
-export async function uploadImage(bucket: string, path: string, file: File): Promise<string> {
-  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
+/** Pass `upsert: false` to make the upload fail (409) instead of overwriting an existing file. */
+export async function uploadImage(
+  bucket: string,
+  path: string,
+  file: File,
+  { upsert = true }: { upsert?: boolean } = {}
+): Promise<string> {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert })
   if (error) throw error
   return getPublicUrl(bucket, path)
 }
@@ -59,6 +71,60 @@ export async function moveImage(bucket: string, oldPath: string, newPath: string
 export function getPublicUrl(bucket: string, path: string): string {
   const { data } = supabase.storage.from(bucket).getPublicUrl(path)
   return data.publicUrl
+}
+
+let ensureFabricsPromise: Promise<void> | null = null
+
+/**
+ * Ensures the Fabrics subfolders (Closeup, Head, Tag, Texture) exist under
+ * `images/Fabrics/` (mapped to `/stub/images/Fabrics/...` on self-hosted storage).
+ * Idempotent: runs once per session and never overwrites existing objects.
+ */
+export function ensureFabricsFolders(): Promise<void> {
+  if (ensureFabricsPromise) return ensureFabricsPromise
+
+  ensureFabricsPromise = (async () => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(CONTENT_STORAGE_BUCKET)
+        .list(FABRICS_STORAGE_PREFIX, { limit: 100 })
+
+      if (error) {
+        console.warn("Could not inspect Fabrics folder in storage:", error.message)
+        ensureFabricsPromise = null
+        return
+      }
+
+      const existing = new Set((data ?? []).map((item) => item.name.toLowerCase()))
+      const missing = FABRIC_SUBFOLDERS.filter((sub) => !existing.has(sub.toLowerCase()))
+
+      if (missing.length === 0) return
+
+      await Promise.all(
+        missing.map(async (sub) => {
+          const placeholderPath = `${FABRICS_STORAGE_PREFIX}/${sub}/${EMPTY_FOLDER_PLACEHOLDER}`
+          const placeholder = new Blob([""], { type: "text/plain" })
+          const { error: uploadErr } = await supabase.storage
+            .from(CONTENT_STORAGE_BUCKET)
+            .upload(placeholderPath, placeholder, { upsert: false, contentType: "text/plain" })
+
+          if (uploadErr) {
+            const errObj = uploadErr as { statusCode?: string | number; status?: string | number; message?: string }
+            const status = String(errObj.statusCode ?? errObj.status ?? "")
+            const isDuplicate = status === "409" || /already exists|duplicate/i.test(errObj.message ?? "")
+            if (!isDuplicate) {
+              console.warn(`Could not initialize folder ${FABRICS_STORAGE_PREFIX}/${sub}:`, uploadErr.message)
+            }
+          }
+        })
+      )
+    } catch (err) {
+      console.warn("Failed to ensure Fabrics storage folders:", err)
+      ensureFabricsPromise = null
+    }
+  })()
+
+  return ensureFabricsPromise
 }
 
 /**

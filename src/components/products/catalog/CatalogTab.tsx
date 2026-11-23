@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "motion/react"
-import { Button, Chip, Dropdown, Modal, Spinner, toast, Typography } from "@heroui/react"
+import { Button, ButtonGroup, Chip, Dropdown, Modal, Spinner, toast, Typography } from "@heroui/react"
 import type { ColumnDef } from "@tanstack/react-table"
 import { cn } from "@/lib/utils"
 import Toolbar from "@/components/shared/Toolbar"
@@ -20,20 +20,10 @@ import * as XLSX from "xlsx"
 import { autoMapMediaImagesToSerials } from "@/lib/autoMapImages"
 import { supabase } from "@/lib/supabase/client"
 import type { InventoryRowWithDetails } from "@/hooks/useInventory"
-import type { ToolbarColumn } from "@/types/app.types"
+import { ROW_HEIGHT_OPTIONS, type RowHeight, type ToolbarColumn } from "@/types/app.types"
 import SerialNumberView from "./SerialNumberView"
-
-const DownloadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-  </svg>
-)
-
-const SparklesIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5 text-indigo-600">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-  </svg>
-)
+import ConvertSerialsModal from "./ConvertSerialsModal"
+import { ArrowDownToLine, ArrowUpFromLine, ArrowsExpandVertical, ArrowsRotateRight, Ban, ChevronDown, ChevronRight, Cube, EllipsisVertical, FilePlus, Hashtag, LayoutColumns3, Pencil, Plus, TriangleExclamation, Xmark } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Column definitions
@@ -52,6 +42,30 @@ const CATALOG_COLUMNS: ToolbarColumn[] = [
   { id: "is_verified", label: "Verification", type: "boolean" },
   { id: "is_active", label: "Status", type: "boolean" },
 ]
+
+const hideableColumns = CATALOG_COLUMNS.filter((c) => c.hideable !== false)
+
+// Matches the row-actions menu items further down
+const menuItemClass =
+  "flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 whitespace-nowrap rounded-lg cursor-pointer outline-hidden hover:bg-indigo-50 hover:text-indigo-700 data-[focused]:bg-indigo-50 data-[focused]:text-indigo-700 data-[disabled]:opacity-50 data-[disabled]:cursor-not-allowed"
+
+// Checkable items (row height / column visibility). HeroUI absolutely positions the checkmark in a left
+// gutter; pin it to the same 12px column as the icons above and start the label where icon-item text starts
+// (12px pad + 15px icon + 8px gap), since px-3 would otherwise override HeroUI's gutter padding.
+const menuCheckItemClass = cn(
+  menuItemClass,
+  "pl-[35px] [&_[data-slot=menu-item-indicator]]:start-3 [&_[data-slot=menu-item-indicator]]:text-indigo-600"
+)
+
+// Submenu triggers. HeroUI absolutely positions the chevron at the right edge and pads for it, but px-3
+// overrides that padding; reserve the gutter again (pr-8) and pin the chevron 12px in, mirroring the left pad.
+const menuSubmenuItemClass = cn(
+  menuItemClass,
+  "pr-8 [&_[data-slot=submenu-indicator]]:end-3 [&_[data-slot=submenu-indicator]]:text-zinc-400"
+)
+
+// Split-button halves: ButtonGroup rounds the outer corners, so no rounded-* here
+const splitButtonClass = "bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium h-9 cursor-pointer"
 
 const COL_MIN_WIDTHS: Record<string, number> = {
   sku: 140,
@@ -113,44 +127,6 @@ const ROW_HEIGHT_PX: Record<string, string> = {
 // Inline icons
 // ──────────────────────────────────────────────────────────
 
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-const UploadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-  </svg>
-)
-const EditIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125" />
-  </svg>
-)
-const StopIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-  </svg>
-)
-const ChevronRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-  </svg>
-)
-const CloseX = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-)
-const MoreIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-    <circle cx="12" cy="5" r="1.75" />
-    <circle cx="12" cy="12" r="1.75" />
-    <circle cx="12" cy="19" r="1.75" />
-  </svg>
-)
-
 // ──────────────────────────────────────────────────────────
 // Condition chip
 // ──────────────────────────────────────────────────────────
@@ -173,7 +149,7 @@ const ConditionChip = ({
     <span className={cn("inline-flex items-center gap-1.5 h-7 pl-2.5 pr-1.5 rounded-full border text-xs font-medium whitespace-nowrap", tones[tone])}>
       {children}
       <button type="button" onClick={onRemove} className="p-0.5 rounded-full hover:bg-black/5 transition-colors cursor-pointer">
-        <CloseX />
+        <Xmark width="13" height="13" />
       </button>
     </span>
   )
@@ -218,7 +194,7 @@ function GroupHeader({ label, count, isCollapsed, onToggle }: GroupHeaderProps) 
       className="w-full flex items-center gap-2 px-4 py-2 bg-zinc-100/80 border-b border-zinc-200 text-xs font-semibold text-zinc-600 hover:bg-zinc-200/60 transition-colors cursor-pointer text-left"
     >
       <motion.span animate={{ rotate: isCollapsed ? -90 : 0 }} transition={{ duration: 0.15 }} className="inline-flex">
-        <ChevronRightIcon />
+        <ChevronRight width="14" height="14" />
       </motion.span>
       <span>{label}</span>
       <span className="text-zinc-400 font-normal ml-1">({count})</span>
@@ -239,6 +215,9 @@ export default function CatalogTab() {
   const groupBy = useViewStore((s) => s.groupBy)
   const hiddenColumns = useViewStore((s) => s.hiddenColumns)
   const rowHeight = useViewStore((s) => s.rowHeight)
+  const setRowHeight = useViewStore((s) => s.setRowHeight)
+  const setHiddenColumns = useViewStore((s) => s.setHiddenColumns)
+  const showAllColumns = useViewStore((s) => s.showAllColumns)
   const openSearch = useViewStore((s) => s.openSearch)
   const removeSort = useViewStore((s) => s.removeSort)
   const setGroupBy = useViewStore((s) => s.setGroupBy)
@@ -470,7 +449,7 @@ export default function CatalogTab() {
               className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-all cursor-pointer"
               aria-label="Row actions"
             >
-              <MoreIcon />
+              <EllipsisVertical />
             </Dropdown.Trigger>
             <Dropdown.Popover placement="bottom end" className="min-w-[160px]">
               <Dropdown.Menu aria-label="Product actions">
@@ -479,7 +458,7 @@ export default function CatalogTab() {
                   onAction={() => handleEditRow(row.original)}
                   className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 rounded-lg cursor-pointer outline-hidden hover:bg-indigo-50 hover:text-indigo-700 data-[focused]:bg-indigo-50 data-[focused]:text-indigo-700"
                 >
-                  <EditIcon />
+                  <Pencil width="15" height="15" />
                   Edit
                 </Dropdown.Item>
                 {row.original.is_active && (
@@ -488,7 +467,7 @@ export default function CatalogTab() {
                     onAction={() => handleDiscontinue(row.original)}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 rounded-lg cursor-pointer outline-hidden hover:bg-red-50 data-[focused]:bg-red-50"
                   >
-                    <StopIcon />
+                    <Ban width="15" height="15" />
                     Discontinue
                   </Dropdown.Item>
                 )}
@@ -622,6 +601,67 @@ export default function CatalogTab() {
     }
   }
 
+  // ── Serial-number bulk actions (moved here from the Serial Numbers pages) ──
+  const [isSyncingSerials, setIsSyncingSerials] = useState(false)
+  const [isConvertingSerials, setIsConvertingSerials] = useState(false)
+  const [convertConfirmOpen, setConvertConfirmOpen] = useState(false)
+  // Bumped after a sync/convert so the Serial Number View (which loads its own data) remounts fresh
+  const [serialViewKey, setSerialViewKey] = useState(0)
+  const [isExportingSerials, setIsExportingSerials] = useState(false)
+  const isMenuBusy = isExporting || isExportingSerials || isSyncingSerials || isConvertingSerials
+
+  /** Exports every serial number with its resolved catalog details to Excel (the lib shows its own result toasts). */
+  const handleExportSerials = async () => {
+    setIsExportingSerials(true)
+    try {
+      const { exportSerialOrdersToExcel } = await import("@/lib/exportSerialOrders")
+      await exportSerialOrdersToExcel()
+    } catch (err: any) {
+      console.error("Export serials error:", err)
+      toast.danger(`Export failed: ${err.message || "Unknown error"}`)
+    } finally {
+      setIsExportingSerials(false)
+    }
+  }
+
+  /** 1-click sync: copies catalog parameters and SKUs onto every inventory piece. */
+  const handleSyncAllSerials = async () => {
+    setIsSyncingSerials(true)
+    try {
+      const { error } = await (supabase.rpc as any)("copy_catalog_to_inventory", {
+        p_inventory_ids: null,
+      })
+
+      if (error) throw error
+      toast.success("Successfully synchronized catalog data to inventory pieces!")
+      refetch()
+      setSerialViewKey((k) => k + 1)
+    } catch (err: any) {
+      console.error("Sync error:", err)
+      toast.danger(`Sync failed: ${err.message || "Unknown error"}`)
+    } finally {
+      setIsSyncingSerials(false)
+    }
+  }
+
+  /** Copy & convert: rebuilds SKUs from every serial number and nests the pieces under them. */
+  const handleConvertSerialsToSku = async () => {
+    setIsConvertingSerials(true)
+    setConvertConfirmOpen(false)
+    try {
+      const { convertSerialOrdersToSku } = await import("@/lib/convertSerialOrdersToSku")
+      const result = await convertSerialOrdersToSku()
+      toast.success(result.message)
+      refetch()
+      setSerialViewKey((k) => k + 1)
+    } catch (err: any) {
+      console.error("Convert serial orders error:", err)
+      toast.danger(`Conversion failed: ${err.message || "Unknown error"}`)
+    } finally {
+      setIsConvertingSerials(false)
+    }
+  }
+
   return (
     <div className="flex flex-col flex-1 h-full overflow-hidden bg-zinc-50/30">
       {/* Sticky header */}
@@ -633,7 +673,7 @@ export default function CatalogTab() {
                 type="button"
                 onClick={() => setCatalogView("sku")}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
                   catalogView === "sku"
                     ? "bg-white text-zinc-900 shadow-xs"
                     : "text-zinc-500 hover:text-zinc-900"
@@ -645,7 +685,7 @@ export default function CatalogTab() {
                 type="button"
                 onClick={() => setCatalogView("serial")}
                 className={cn(
-                  "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                  "px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer",
                   catalogView === "serial"
                     ? "bg-white text-zinc-900 shadow-xs"
                     : "text-zinc-500 hover:text-zinc-900"
@@ -656,54 +696,182 @@ export default function CatalogTab() {
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <Toolbar columns={CATALOG_COLUMNS} context="catalog" className="justify-end" />
-            <Button
-              variant="outline"
-              onPress={handleExportCatalog}
-              isDisabled={isExporting}
-              className="border-zinc-200 hover:border-zinc-300 text-zinc-700 bg-white rounded-xl text-sm font-medium h-9 px-3.5 cursor-pointer shrink-0"
-            >
-              {isExporting ? (
-                <>
-                  <Spinner size="sm" color="current" className="mr-1.5" />
-                  <span className="hidden sm:inline">Exporting…</span>
-                  <span className="sm:hidden">…</span>
-                </>
-              ) : (
-                <>
-                  <DownloadIcon />
-                  <span className="hidden sm:inline">Export Catalog</span>
-                  <span className="sm:hidden">Export</span>
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onPress={() => setBulkUploadModalOpen(true)}
-              className="border-zinc-200 hover:border-zinc-300 text-zinc-700 bg-white rounded-xl text-sm font-medium h-9 px-3.5 cursor-pointer shrink-0"
-            >
-              <UploadIcon />
-              <span className="hidden sm:inline">Upload SKUs</span>
-              <span className="sm:hidden">SKUs</span>
-            </Button>
-            <Button
-              variant="outline"
-              onPress={() => setBulkSerialUploadModalOpen(true)}
-              className="border-zinc-200 hover:border-zinc-300 text-zinc-700 bg-white rounded-xl text-sm font-medium h-9 px-3.5 cursor-pointer shrink-0"
-            >
-              <UploadIcon />
-              <span className="hidden sm:inline">Upload Serials</span>
-              <span className="sm:hidden">Serials</span>
-            </Button>
-            <Button
-              variant="primary"
-              onPress={handleOpenAddProduct}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium h-9 px-3.5 cursor-pointer shrink-0"
-            >
-              <PlusIcon />
-              <span className="hidden sm:inline">New Product</span>
-              <span className="sm:hidden">New</span>
-            </Button>
+            <Toolbar columns={CATALOG_COLUMNS} context="catalog" className="justify-end" showViewControls={false} />
+            {/* Split button: New Product + chevron menu (data actions and view settings) */}
+            <ButtonGroup variant="primary" className="shrink-0">
+              <Button onPress={handleOpenAddProduct} className={cn(splitButtonClass, "px-3.5")}>
+                <Plus className="mr-1.5" />
+                <span className="hidden sm:inline">New Product</span>
+                <span className="sm:hidden">New</span>
+              </Button>
+              <Dropdown>
+                <Button
+                  isIconOnly
+                  variant="primary"
+                  aria-label="More catalog actions"
+                  className={cn(splitButtonClass, "w-9 min-w-9 relative")}
+                >
+                  <ButtonGroup.Separator />
+                  {isMenuBusy ? <Spinner size="sm" color="current" /> : <ChevronDown />}
+                </Button>
+                <Dropdown.Popover placement="bottom end" className="min-w-[220px]">
+                  <Dropdown.Menu aria-label="Catalog actions">
+                    <Dropdown.Section aria-label="Import and export">
+                      {/* Import ▸ SKUs / Serials */}
+                      <Dropdown.SubmenuTrigger>
+                        <Dropdown.Item id="import" textValue="Import" className={menuSubmenuItemClass}>
+                          <ArrowUpFromLine width="15" height="15" />
+                          <span className="flex-1">Import</span>
+                          <Dropdown.SubmenuIndicator />
+                        </Dropdown.Item>
+                        <Dropdown.Popover className="min-w-[180px]">
+                          <Dropdown.Menu aria-label="Import">
+                            <Dropdown.Item id="import-skus" textValue="Import SKUs" onAction={() => setBulkUploadModalOpen(true)} className={menuItemClass}>
+                              <Cube width="15" height="15" />
+                              Import SKUs
+                            </Dropdown.Item>
+                            <Dropdown.Item id="import-serials" textValue="Import serials" onAction={() => setBulkSerialUploadModalOpen(true)} className={menuItemClass}>
+                              <Hashtag width="15" height="15" />
+                              Import serials
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown.Popover>
+                      </Dropdown.SubmenuTrigger>
+
+                      {/* Export ▸ SKUs / Serials */}
+                      <Dropdown.SubmenuTrigger>
+                        <Dropdown.Item id="export" textValue="Export" className={menuSubmenuItemClass}>
+                          <ArrowDownToLine width="15" height="15" />
+                          <span className="flex-1">Export</span>
+                          {(isExporting || isExportingSerials) && <Spinner size="sm" color="current" />}
+                          <Dropdown.SubmenuIndicator />
+                        </Dropdown.Item>
+                        <Dropdown.Popover className="min-w-[180px]">
+                          <Dropdown.Menu aria-label="Export">
+                            <Dropdown.Item
+                              id="export-skus"
+                              textValue={isExporting ? "Exporting SKUs" : "Export SKUs"}
+                              isDisabled={isExporting}
+                              onAction={handleExportCatalog}
+                              className={menuItemClass}
+                            >
+                              <Cube width="15" height="15" />
+                              {isExporting ? "Exporting SKUs…" : "Export SKUs"}
+                            </Dropdown.Item>
+                            <Dropdown.Item
+                              id="export-serials"
+                              textValue={isExportingSerials ? "Exporting serials" : "Export serials"}
+                              isDisabled={isExportingSerials}
+                              onAction={handleExportSerials}
+                              className={menuItemClass}
+                            >
+                              <Hashtag width="15" height="15" />
+                              {isExportingSerials ? "Exporting serials…" : "Export serials"}
+                            </Dropdown.Item>
+                          </Dropdown.Menu>
+                        </Dropdown.Popover>
+                      </Dropdown.SubmenuTrigger>
+                    </Dropdown.Section>
+
+                    <Dropdown.Section aria-label="Serial numbers" className="mt-1 pt-1 border-t border-zinc-100">
+                      <Dropdown.Item
+                        id="sync-serials"
+                        textValue={isSyncingSerials ? "Syncing serials" : "Sync all serials to inventory"}
+                        isDisabled={isSyncingSerials || isConvertingSerials}
+                        onAction={handleSyncAllSerials}
+                        className={menuItemClass}
+                      >
+                        <ArrowsRotateRight width="15" height="15" />
+                        {isSyncingSerials ? "Syncing…" : "1-click sync all serials"}
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        id="convert-serials"
+                        textValue={isConvertingSerials ? "Converting serials" : "Copy and convert serials to SKUs"}
+                        isDisabled={isConvertingSerials || isSyncingSerials || isLoading}
+                        onAction={() => setConvertConfirmOpen(true)}
+                        className={menuItemClass}
+                      >
+                        <FilePlus width="15" height="15" />
+                        {isConvertingSerials ? "Converting to SKUs…" : "Copy & convert serials to SKUs"}
+                      </Dropdown.Item>
+                    </Dropdown.Section>
+
+                    <Dropdown.Section aria-label="View" className="mt-1 pt-1 border-t border-zinc-100">
+                      {/* Row height — single-select submenu */}
+                      <Dropdown.SubmenuTrigger>
+                        <Dropdown.Item id="row-height" textValue="Row height" className={menuSubmenuItemClass}>
+                          <ArrowsExpandVertical width="15" height="15" />
+                          <span className="flex-1">Row height</span>
+                          <span className="text-xs text-zinc-400 leading-none">{ROW_HEIGHT_OPTIONS.find((o) => o.value === rowHeight)?.label}</span>
+                          <Dropdown.SubmenuIndicator />
+                        </Dropdown.Item>
+                        <Dropdown.Popover className="min-w-[180px]">
+                          <Dropdown.Menu
+                            aria-label="Row height"
+                            selectionMode="single"
+                            disallowEmptySelection
+                            selectedKeys={[rowHeight]}
+                            onSelectionChange={(keys) => {
+                              const [next] = Array.from(keys as Set<RowHeight>)
+                              if (next) setRowHeight(next)
+                            }}
+                          >
+                            {ROW_HEIGHT_OPTIONS.map((opt) => (
+                              <Dropdown.Item key={opt.value} id={opt.value} textValue={opt.label} className={menuCheckItemClass}>
+                                <Dropdown.ItemIndicator />
+                                <span className="flex-1">{opt.label}</span>
+                                <span className="text-[11px] text-zinc-400 tabular-nums">{opt.px}px</span>
+                              </Dropdown.Item>
+                            ))}
+                          </Dropdown.Menu>
+                        </Dropdown.Popover>
+                      </Dropdown.SubmenuTrigger>
+
+                      {/* Hide columns — multi-select submenu of the visible columns */}
+                      <Dropdown.SubmenuTrigger>
+                        <Dropdown.Item id="hide-columns" textValue="Hide columns" className={menuSubmenuItemClass}>
+                          <LayoutColumns3 width="15" height="15" />
+                          <span className="flex-1">Hide columns</span>
+                          {hiddenColumns.length > 0 && (
+                            <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 rounded-full px-1.5 py-0.5 leading-none tabular-nums">
+                              {hiddenColumns.length} hidden
+                            </span>
+                          )}
+                          <Dropdown.SubmenuIndicator />
+                        </Dropdown.Item>
+                        <Dropdown.Popover className="min-w-[200px] max-h-80 overflow-y-auto">
+                          <Dropdown.Menu aria-label="Visible columns" shouldCloseOnSelect={false}>
+                            <Dropdown.Section
+                              aria-label="Columns"
+                              selectionMode="multiple"
+                              selectedKeys={hideableColumns.filter((c) => !hiddenColumns.includes(c.id)).map((c) => c.id)}
+                              onSelectionChange={(keys) => {
+                                const visible = keys === "all" ? null : new Set(Array.from(keys, String))
+                                setHiddenColumns(visible ? hideableColumns.filter((c) => !visible.has(c.id)).map((c) => c.id) : [])
+                              }}
+                            >
+                              {hideableColumns.map((c) => (
+                                <Dropdown.Item key={c.id} id={c.id} textValue={c.label} className={menuCheckItemClass}>
+                                  <Dropdown.ItemIndicator />
+                                  {c.label}
+                                </Dropdown.Item>
+                              ))}
+                            </Dropdown.Section>
+                            {hiddenColumns.length > 0 ? (
+                              <Dropdown.Section aria-label="Reset columns" className="mt-1 pt-1 border-t border-zinc-100">
+                                <Dropdown.Item id="show-all-columns" textValue="Show all columns" onAction={showAllColumns} className={cn(menuItemClass, "pl-[35px] text-indigo-600")}>
+                                  Show all columns
+                                </Dropdown.Item>
+                              </Dropdown.Section>
+                            ) : null}
+                          </Dropdown.Menu>
+                        </Dropdown.Popover>
+                      </Dropdown.SubmenuTrigger>
+                    </Dropdown.Section>
+                  </Dropdown.Menu>
+                </Dropdown.Popover>
+              </Dropdown>
+            </ButtonGroup>
           </div>
         </div>
 
@@ -739,7 +907,7 @@ export default function CatalogTab() {
       {/* Main scrollable grid */}
       <div className="flex-1 overflow-hidden bg-white px-4 md:px-6 py-5">
         {catalogView === "serial" ? (
-          <SerialNumberView />
+          <SerialNumberView key={serialViewKey} />
         ) : isLoading ? (
           <div className="flex flex-col items-center justify-center h-48 gap-3">
             <Spinner size="md" color="accent" />
@@ -760,7 +928,7 @@ export default function CatalogTab() {
               onPress={handleOpenAddProduct}
               className="bg-indigo-600 text-white rounded-xl text-sm px-4 h-9 cursor-pointer"
             >
-              <PlusIcon />Add Product
+              <Plus className="mr-1.5" />Add Product
             </Button>
           </div>
         ) : (
@@ -854,9 +1022,7 @@ export default function CatalogTab() {
               {({ close }) => (
                 <>
                   <Modal.Header className="flex gap-2 items-center text-amber-700 border-b border-zinc-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-amber-500">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
+                    <TriangleExclamation width="18" height="18" className="text-amber-500" />
                     Discontinue Product?
                   </Modal.Header>
                   <Modal.Body className="py-5">
@@ -909,6 +1075,13 @@ export default function CatalogTab() {
         mode={inventoryModalMode}
         existingRow={editingInventoryRow}
       />
+      {/* ── Copy & convert serials → SKUs confirmation ── */}
+      <ConvertSerialsModal
+        isOpen={convertConfirmOpen}
+        onOpenChange={setConvertConfirmOpen}
+        onConfirm={handleConvertSerialsToSku}
+      />
+
       {/* ── Bulk Upload SKUs modal ── */}
       <BulkUploadModal
         isOpen={bulkUploadModalOpen}

@@ -9,10 +9,11 @@ import { getThumbnailUrl } from "@/lib/supabase/storage"
 import { useCatalogStore } from "@/stores/catalogStore"
 import { useViewStore } from "@/stores/viewStore"
 import ToolbarControl from "@/components/ui/ToolbarControl"
-import { HideColumnsPanel, ColumnsIcon } from "@/components/shared/Toolbar"
+import { HideColumnsPanel } from "@/components/shared/Toolbar"
 import { cn } from "@/lib/utils"
 import type { Database } from "@/types/database.types"
 import type { ToolbarColumn } from "@/types/app.types"
+import { ArrowLeft as ArrowLeftIcon, ChevronDown, ChevronRight, LayoutColumns3, Picture } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Types
@@ -77,30 +78,6 @@ interface GridRow {
 // ──────────────────────────────────────────────────────────
 // Icons / Placeholders
 // ──────────────────────────────────────────────────────────
-
-const BackIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-  </svg>
-)
-
-const ChevronDownIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-  </svg>
-)
-
-const ChevronRightIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-  </svg>
-)
-
-const PhotoPlaceholderIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-  </svg>
-)
 
 const StrikethroughIcon = () => (
   <div className="w-10 h-3 bg-zinc-200/70 rounded-full mx-auto" title="Not Applicable / Empty" />
@@ -177,18 +154,7 @@ function GridSelect({
           )}
         >
           <span className="truncate flex-1 text-zinc-800">{selectedLabel}</span>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="12"
-            height="12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            className="text-zinc-400 shrink-0 ml-1"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
+          <ChevronDown width="12" height="12" className="text-zinc-400 shrink-0 ml-1" />
         </button>
       </Popover.Trigger>
       <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[200px] z-50 p-0">
@@ -1107,7 +1073,7 @@ export default function BulkEditPage() {
             onClick={handleCancel}
             className="p-2 rounded-lg text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100 cursor-pointer transition-colors"
           >
-            <BackIcon />
+            <ArrowLeftIcon />
           </button>
           <div>
             <Typography.Heading level={1} className="text-sm text-zinc-900">Editing {totalCatalogSelected} products</Typography.Heading>
@@ -1120,7 +1086,7 @@ export default function BulkEditPage() {
         <div className="flex items-center gap-2">
           {/* Reused Column Selector Component from catalog tab */}
           <ToolbarControl
-            icon={<ColumnsIcon />}
+            icon={<LayoutColumns3 />}
             label="Columns"
             badge={hiddenColumns.length}
             active={hiddenColumns.length > 0}
@@ -1208,7 +1174,7 @@ export default function BulkEditPage() {
                               onClick={() => toggleParentCollapse(rowId)}
                               className="p-1 rounded text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer shrink-0"
                             >
-                              {collapsedParents.has(rowId) ? <ChevronRightIcon /> : <ChevronDownIcon />}
+                              {collapsedParents.has(rowId) ? <ChevronRight width="14" height="14" /> : <ChevronDown width="14" height="14" />}
                             </button>
                             {(() => {
                               const firstChild = inventories.find((inv) => inv.catalog_id === rowId)
@@ -1224,7 +1190,7 @@ export default function BulkEditPage() {
                                 </div>
                               ) : (
                                 <div className="w-8 h-8 rounded bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400 shrink-0">
-                                  <PhotoPlaceholderIcon />
+                                  <Picture width="14" height="14" />
                                 </div>
                               )
                             })()}
@@ -1251,7 +1217,7 @@ export default function BulkEditPage() {
                               </div>
                             ) : (
                               <div className="w-7 h-7 rounded bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400 shrink-0">
-                                <PhotoPlaceholderIcon />
+                                <Picture width="14" height="14" />
                               </div>
                             )}
                             <Typography.Code weight="medium" truncate className="text-zinc-700" title={row.displayTitle}>

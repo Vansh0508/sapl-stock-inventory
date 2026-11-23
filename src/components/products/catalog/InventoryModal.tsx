@@ -13,6 +13,7 @@ import { Reorder, AnimatePresence } from "motion/react"
 import Image from "next/image"
 import { getThumbnailUrl } from "@/lib/supabase/storage"
 import MediaSelectorModal from "./MediaSelectorModal"
+import { PlayFill, Plus, Xmark } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Types & Schema
@@ -369,9 +370,7 @@ export default function InventoryModal({
                                   <div className="relative w-20 h-20 sm:w-[100px] sm:h-[100px] rounded-xl overflow-hidden border border-zinc-200 bg-zinc-50 flex items-center justify-center">
                                     {img.storagePath.toLowerCase().endsWith(".mp4") || img.name.toLowerCase().endsWith(".mp4") ? (
                                       <div className="w-full h-full bg-zinc-950 flex items-center justify-center">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" className="text-white opacity-85">
-                                          <path d="M8 5v14l11-7z" />
-                                        </svg>
+                                        <PlayFill width="20" height="20" className="text-white opacity-85" />
                                       </div>
                                     ) : (
                                       <Image
@@ -393,9 +392,7 @@ export default function InventoryModal({
                                       className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500 hover:bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center cursor-pointer shadow-sm border border-white/20"
                                       aria-label="Remove image"
                                     >
-                                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                      </svg>
+                                      <Xmark width="10" height="10" />
                                     </button>
                                   </div>
                                 </Reorder.Item>
@@ -410,9 +407,7 @@ export default function InventoryModal({
                               onClick={() => setIsSelectorOpen(true)}
                               className="w-20 h-20 sm:w-[100px] sm:h-[100px] rounded-xl border-2 border-dashed border-zinc-200 hover:border-indigo-400 hover:bg-indigo-50/10 flex flex-col items-center justify-center gap-1.5 cursor-pointer bg-zinc-50/50 transition-colors shrink-0 select-none group"
                             >
-                              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400 group-hover:text-indigo-600 transition-colors">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                              </svg>
+                              <Plus width="18" height="18" className="text-zinc-400 group-hover:text-indigo-600 transition-colors" />
                               <span className="text-[10px] font-semibold text-zinc-500 group-hover:text-indigo-600 transition-colors">Add media</span>
                             </button>
                           )}

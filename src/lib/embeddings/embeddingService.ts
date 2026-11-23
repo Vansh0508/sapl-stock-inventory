@@ -45,10 +45,10 @@ function generateSyntheticFeatureVector(textOrUrl: string): number[] {
 export async function generateImageEmbedding(imageUrl: string): Promise<number[]> {
   try {
     // Dynamic import to support SSR and environments where ONNX backend loads lazily
-    const { pipeline, RawImage } = await import("@xenova/transformers")
+    const { pipeline, RawImage } = await import("@huggingface/transformers")
     
     // Instantiate CLIP vision feature extractor
-    const visionExtractor = await pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32")
+    const visionExtractor = await pipeline("image-feature-extraction", "Xenova/clip-vit-base-patch32", { dtype: "q8" })
     const image = await RawImage.fromURL(imageUrl)
     const output = await visionExtractor(image)
     
@@ -98,9 +98,9 @@ export function formatCatalogText(data: CatalogMetadataInput): string {
 export async function generateCatalogTextEmbedding(data: CatalogMetadataInput): Promise<number[]> {
   const formattedText = formatCatalogText(data)
   try {
-    const { pipeline } = await import("@xenova/transformers")
+    const { pipeline } = await import("@huggingface/transformers")
     
-    const textExtractor = await pipeline("feature-extraction", "Xenova/clip-vit-base-patch32")
+    const textExtractor = await pipeline("feature-extraction", "Xenova/clip-vit-base-patch32", { dtype: "q8" })
     const output = await textExtractor(formattedText, { pooling: "mean", normalize: true })
     
     const rawArray = Array.from(output.data as Float32Array)

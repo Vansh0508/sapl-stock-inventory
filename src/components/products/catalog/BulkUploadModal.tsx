@@ -18,6 +18,7 @@ import {
 import * as XLSX from "xlsx"
 import { supabase } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
+import { ArrowDownToLine, CircleCheck, CircleExclamation, CloudArrowUpIn, EllipsisVertical, File as FileIcon, PencilToSquare, TrashBin } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Types & Interfaces
@@ -110,54 +111,6 @@ function generateSerialNumbers(count: number, startIndex: number): string[] {
 // ──────────────────────────────────────────────────────────
 // Helper Icons
 // ──────────────────────────────────────────────────────────
-
-const UploadCloudIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
-  </svg>
-)
-
-const DownloadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-  </svg>
-)
-
-const FileSpreadsheetIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-indigo-600">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-  </svg>
-)
-
-const CheckCircleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-emerald-600">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-  </svg>
-)
-
-const ExclamationCircleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="text-red-500">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-  </svg>
-)
-
-const EllipsisVerticalIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
-  </svg>
-)
-
-const PencilIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-  </svg>
-)
-
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-  </svg>
-)
 
 // ──────────────────────────────────────────────────────────
 // Template CSV Generator
@@ -475,7 +428,7 @@ function EditBulkRowModal({
             <Modal.Header className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                  <PencilIcon />
+                  <PencilToSquare width="14" height="14" />
                 </div>
                 <div>
                   <Typography.Heading level={4} weight="semibold" className="text-zinc-900 text-base">
@@ -1567,7 +1520,7 @@ export default function BulkUploadModal({
           <Modal.Header className="flex items-center justify-between border-b border-zinc-100 px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
-                <UploadCloudIcon />
+                <CloudArrowUpIn width="20" height="20" />
               </div>
               <div>
                 <Typography.Heading level={4} weight="semibold" className="text-zinc-900 text-base">
@@ -1584,7 +1537,7 @@ export default function BulkUploadModal({
                 onPress={downloadTemplate}
                 className="h-8 px-3 text-xs rounded-xl text-indigo-700 border-indigo-200 hover:bg-indigo-50 font-medium cursor-pointer"
               >
-                <DownloadIcon />
+                <ArrowDownToLine />
                 Download Template
               </Button>
             </div>
@@ -1594,7 +1547,7 @@ export default function BulkUploadModal({
           <Modal.Body className="flex-1 overflow-hidden p-6 flex flex-col">
             {step === "upload" && (
               <div className="flex flex-col items-center justify-center py-12 px-6 border-2 border-dashed border-zinc-200 hover:border-indigo-400 bg-zinc-50/50 hover:bg-indigo-50/30 rounded-2xl transition-all text-center">
-                <FileSpreadsheetIcon />
+                <FileIcon width="32" height="32" className="text-indigo-600" />
                 <Typography.Heading level={5} weight="semibold" className="mt-4 text-zinc-800 text-sm">
                   Choose a CSV or Excel file to upload
                 </Typography.Heading>
@@ -1675,7 +1628,7 @@ export default function BulkUploadModal({
                         {validCount}
                       </Typography.Heading>
                     </div>
-                    <CheckCircleIcon />
+                    <CircleCheck className="text-emerald-600" />
                   </div>
                   <div className="p-3 bg-red-50 border border-red-200 rounded-xl flex items-center justify-between">
                     <div>
@@ -1686,7 +1639,7 @@ export default function BulkUploadModal({
                         {errorCount}
                       </Typography.Heading>
                     </div>
-                    <ExclamationCircleIcon />
+                    <CircleExclamation className="text-red-500" />
                   </div>
                 </div>
 
@@ -1745,7 +1698,7 @@ export default function BulkUploadModal({
                         onPress={downloadFailedRowsCSV}
                         className="h-8 px-3 text-xs rounded-xl text-red-700 border-red-200 hover:bg-red-50 font-medium cursor-pointer shrink-0"
                       >
-                        <DownloadIcon />
+                        <ArrowDownToLine />
                         Download Failed Rows ({errorCount})
                       </Button>
                     )}
@@ -1847,7 +1800,7 @@ export default function BulkUploadModal({
                               <td className="py-2 px-3 text-center">
                                 <Dropdown>
                                   <Dropdown.Trigger className="p-1.5 rounded-lg hover:bg-zinc-200 text-zinc-500 hover:text-zinc-900 cursor-pointer outline-hidden inline-flex items-center justify-center" aria-label="Row action menu">
-                                    <EllipsisVerticalIcon />
+                                    <EllipsisVertical />
                                   </Dropdown.Trigger>
                                   <Dropdown.Popover placement="bottom end" className="min-w-[140px] rounded-xl border border-zinc-200 bg-white shadow-xl p-1 z-50">
                                     <Dropdown.Menu aria-label="Row actions">
@@ -1856,7 +1809,7 @@ export default function BulkUploadModal({
                                         onPress={() => setEditingRow(row)}
                                         className="flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer text-zinc-700 hover:bg-zinc-100 rounded-lg"
                                       >
-                                        <PencilIcon />
+                                        <PencilToSquare width="14" height="14" />
                                         Edit &amp; Map
                                       </Dropdown.Item>
                                       <Dropdown.Item
@@ -1864,7 +1817,7 @@ export default function BulkUploadModal({
                                         onPress={() => handleDeleteRow(row.rowNum)}
                                         className="flex items-center gap-2 px-3 py-2 text-xs font-semibold cursor-pointer text-red-600 hover:bg-red-50 rounded-lg"
                                       >
-                                        <TrashIcon />
+                                        <TrashBin width="14" height="14" />
                                         Delete Row
                                       </Dropdown.Item>
                                     </Dropdown.Menu>

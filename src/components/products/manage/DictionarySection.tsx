@@ -13,6 +13,7 @@ import FormAlert from "@/components/shared/FormAlert"
 import { useDictionary } from "@/hooks/useDictionary"
 import { supabase } from "@/lib/supabase/client"
 import ReassignDeleteModal, { type ReassignOption } from "@/components/shared/ReassignDeleteModal"
+import { Plus, TriangleExclamation } from "@gravity-ui/icons"
 
 interface DictionaryRow {
   id: string
@@ -305,18 +306,7 @@ export function DictionarySection<Row extends DictionaryRow>({
             variant="primary"
             className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-medium h-10 px-4 cursor-pointer"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2"
-              className="mr-1.5"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <Plus className="mr-1.5" />
             Add {entityName}
           </Button>
         </div>
@@ -414,22 +404,7 @@ export function DictionarySection<Row extends DictionaryRow>({
                 {({ close }) => (
                   <>
                     <Modal.Header className="flex gap-2 items-center text-red-600 border-b border-zinc-100">
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        className="text-red-500"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                        />
-                      </svg>
+                      <TriangleExclamation width="20" height="20" className="text-red-500" />
                       Delete {entityName}?
                     </Modal.Header>
                     <Modal.Body className="py-6">

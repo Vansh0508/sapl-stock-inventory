@@ -12,6 +12,7 @@ import PercentageSlider from "@/components/ui/PercentageSlider"
 import { supabase } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import { runWithVerificationGuard } from "@/lib/verificationGuard"
+import { Check, ChevronDown, Magnifier, Plus, TrashBin } from "@gravity-ui/icons"
 
 // ──────────────────────────────────────────────────────────
 // Types / Schema
@@ -99,17 +100,6 @@ interface SerialNumberMapModalProps {
 // Icons
 // ──────────────────────────────────────────────────────────
 
-const PlusIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" />
-  </svg>
-)
-const TrashIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-  </svg>
-)
-
 // ──────────────────────────────────────────────────────────
 // Custom Search Selectors
 // ──────────────────────────────────────────────────────────
@@ -171,18 +161,7 @@ function HeroSearchSelect({
             <span className={cn("truncate flex-1", !selectedOption ? "text-zinc-400" : "text-zinc-900")}>
               {selectedOption ? selectedOption.label : placeholder}
             </span>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="text-zinc-400 shrink-0 ml-2"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown width="14" height="14" className="text-zinc-400 shrink-0 ml-2" />
           </button>
         </Popover.Trigger>
         <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[220px] p-0 z-50">
@@ -298,18 +277,7 @@ function HeroSearchMultiSelect({
                 <span className="text-zinc-400">{placeholder}</span>
               )}
             </div>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              className="text-zinc-400 shrink-0 ml-2"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
+            <ChevronDown width="14" height="14" className="text-zinc-400 shrink-0 ml-2" />
           </button>
         </Popover.Trigger>
         <Popover.Content className="rounded-xl border border-zinc-200 bg-white shadow-lg overflow-hidden min-w-[220px] p-0 z-50">
@@ -355,9 +323,7 @@ function HeroSearchMultiSelect({
                           )}
                         >
                           {isSelected && (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
+                            <Check width="10" height="10" />
                           )}
                         </span>
                         <span>{o.label}</span>
@@ -908,9 +874,7 @@ export default function SerialNumberMapModal({
                           : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
                       )}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                      </svg>
+                      <Magnifier width="14" height="14" />
                       <span>Map to Existing SKU</span>
                     </button>
 
@@ -924,9 +888,7 @@ export default function SerialNumberMapModal({
                           : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-200"
                       )}
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                      </svg>
+                      <Plus width="14" height="14" />
                       <span>Create New SKU & Map</span>
                     </button>
                   </div>
@@ -1270,7 +1232,7 @@ export default function SerialNumberMapModal({
                                 onClick={() => handleRemoveFiber(idx)}
                                 className="p-2 text-zinc-400 hover:text-red-600 cursor-pointer transition-colors"
                               >
-                                <TrashIcon />
+                                <TrashBin width="14" height="14" />
                               </button>
                             )}
                           </div>
@@ -1283,7 +1245,7 @@ export default function SerialNumberMapModal({
                           onPress={() => appendFiber({ fiber_id: "", percentage: 0 })}
                           className="mt-1 self-start text-xs font-bold border-zinc-300 text-zinc-700 flex items-center gap-1"
                         >
-                          <PlusIcon />
+                          <Plus width="14" height="14" />
                           <span>Add Fiber Component</span>
                         </Button>
                       </div>

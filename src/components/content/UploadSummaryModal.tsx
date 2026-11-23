@@ -6,7 +6,21 @@ import Image from "next/image"
 import { supabase } from "@/lib/supabase/client"
 import { uploadImage, getPublicUrl } from "@/lib/supabase/storage"
 import { getFolderForFilename } from "@/lib/utils"
-import type { FolderKey } from "@/lib/content-folders"
+import {
+  FABRIC_FOLDER_KEYS,
+  type FabricFolderKey,
+  type FolderKey,
+  type MediaOrganizedFolder,
+  getFileStoragePath,
+  getFolderDisplayName,
+  getFolderFullLabel,
+  getFolderStoragePath,
+  isFabricFolder,
+  isVisibleStorageItem,
+} from "@/lib/content-folders"
+import { ArrowUpFromLine, CircleCheckFill, CircleExclamationFill, Copy, Files, Folder as FolderIcon, Magnifier, TrashBin, TriangleExclamation, Xmark } from "@gravity-ui/icons"
+
+type UploadDestination = "auto" | FabricFolderKey
 
 export type FileUploadStatus =
   | "checking"
@@ -23,7 +37,7 @@ export interface QueuedUploadFile {
   name: string
   size: number
   previewUrl: string
-  targetFolder: "Head" | "Floor" | "Corner" | "Closeup" | "Tag"
+  targetFolder: MediaOrganizedFolder | FabricFolderKey
   targetPath: string
   status: FileUploadStatus
   statusMessage: string
@@ -64,7 +78,7 @@ interface UploadSummaryModalProps {
   isOpen: boolean
   onClose: () => void
   files: File[]
-  currentFolder: FolderKey | "root"
+  currentFolder?: FolderKey | "root"
   onUploadSuccess: (newFiles: StorageFile[], folderDelta: Record<string, number>) => void
   resolveDetails: (paths: string[]) => Promise<Record<string, InventoryDetails | null>>
 }
@@ -78,36 +92,76 @@ function formatBytes(bytes?: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
 }
 
-const CheckCircleIcon = ({ className = "w-4 h-4 text-emerald-600" }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
-  </svg>
-)
+// Storage `list()` and PostgREST both cap a single response (~1000 rows), and a long `.in()` list
+// overflows the request URL — so existence checks page/chunk instead of assuming one call is enough.
+const STORAGE_LIST_PAGE_SIZE = 1000
+const DB_LOOKUP_CHUNK_SIZE = 50
+const DB_LOOKUP_CONCURRENCY = 5
 
-const AlertCircleIcon = ({ className = "w-4 h-4 text-amber-500" }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-  </svg>
-)
+/** Returns the lower-cased names of every file in a storage folder, however many there are. */
+async function listAllFolderFileNames(folderPath: string): Promise<Set<string>> {
+  const names = new Set<string>()
+  let offset = 0
 
-const CopyDuplicateIcon = ({ className = "w-4 h-4 text-rose-500" }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-    <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
-    <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
-  </svg>
-)
+  for (;;) {
+    const { data, error } = await supabase.storage.from("images").list(folderPath, {
+      limit: STORAGE_LIST_PAGE_SIZE,
+      offset,
+      sortBy: { column: "name", order: "asc" },
+    })
+    if (error) throw error
+    if (!data || data.length === 0) break
 
-const TrashIcon = ({ className = "w-4 h-4 text-zinc-400" }: { className?: string }) => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className}>
-    <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-  </svg>
-)
+    for (const item of data) {
+      if (isVisibleStorageItem({ id: item.id, name: item.name })) {
+        names.add(item.name.trim().toLowerCase())
+      }
+    }
+
+    if (data.length < STORAGE_LIST_PAGE_SIZE) break
+    offset += data.length
+  }
+
+  return names
+}
+
+/** Returns the subset of `paths` that already have an `inventory_images` row. */
+async function findExistingImagePaths(paths: string[]): Promise<Set<string>> {
+  const existing = new Set<string>()
+  const chunks: string[][] = []
+  for (let i = 0; i < paths.length; i += DB_LOOKUP_CHUNK_SIZE) {
+    chunks.push(paths.slice(i, i + DB_LOOKUP_CHUNK_SIZE))
+  }
+
+  let next = 0
+  const worker = async () => {
+    while (next < chunks.length) {
+      const chunk = chunks[next++]
+      const { data, error } = await (supabase.from("inventory_images" as any) as any)
+        .select("storage_path")
+        .in("storage_path", chunk)
+      if (error) {
+        console.warn("inventory_images lookup failed for a chunk:", error)
+        continue
+      }
+      for (const row of (data as { storage_path: string }[] | null) ?? []) existing.add(row.storage_path)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(DB_LOOKUP_CONCURRENCY, chunks.length) }, worker))
+
+  return existing
+}
+
+const isAlreadyExistsError = (err: unknown): boolean => {
+  const e = err as { statusCode?: string | number; status?: string | number; message?: string } | null
+  return String(e?.statusCode ?? e?.status ?? "") === "409" || /already exists|duplicate/i.test(e?.message ?? "")
+}
 
 export default function UploadSummaryModal({
   isOpen,
   onClose,
   files,
-  currentFolder,
+  currentFolder = "root",
   onUploadSuccess,
   resolveDetails,
 }: UploadSummaryModalProps) {
@@ -117,6 +171,18 @@ export default function UploadSummaryModal({
   const [activeTab, setActiveTab] = useState<"all" | "ready" | "duplicates" | "existing">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, currentName: "" })
+  const [uploadDestination, setUploadDestination] = useState<UploadDestination>(() =>
+    isFabricFolder(currentFolder) ? currentFolder : "auto"
+  )
+
+  // Reset destination whenever the modal opens for a new batch
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen)
+    if (isOpen) {
+      setUploadDestination(isFabricFolder(currentFolder) ? currentFolder : "auto")
+    }
+  }
 
   const previewUrlsRef = useRef<Set<string>>(new Set())
 
@@ -150,8 +216,9 @@ export default function UploadSummaryModal({
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
       const normalizedName = f.name.trim().toLowerCase()
-      const targetFolder = getFolderForFilename(f.name)
-      const targetPath = `media/${targetFolder}/${f.name}`
+      const targetFolder: MediaOrganizedFolder | FabricFolderKey =
+        uploadDestination === "auto" ? getFolderForFilename(f.name) : uploadDestination
+      const targetPath = getFileStoragePath(targetFolder, f.name)
       const previewUrl = URL.createObjectURL(f)
       previewUrlsRef.current.add(previewUrl)
 
@@ -201,12 +268,7 @@ export default function UploadSummaryModal({
         }
 
         // 1. Check database: inventory_images table for existing storage_path matches
-        const candidatePaths = candidateItems.map((c) => c.targetPath)
-        const { data: dbMatches } = await (supabase.from("inventory_images" as any) as any)
-          .select("storage_path")
-          .in("storage_path", candidatePaths)
-
-        const existingDbPaths = new Set(((dbMatches as any[]) ?? []).map((r) => r.storage_path))
+        const existingDbPaths = await findExistingImagePaths(candidateItems.map((c) => c.targetPath))
 
         // 2. Check Supabase Storage folder contents
         // Group candidate files by target folder to batch/query efficiently
@@ -222,7 +284,7 @@ export default function UploadSummaryModal({
         // Check folders in parallel: 1 fast query per folder instead of per-file requests
         await Promise.all(
           Array.from(folderGroups.entries()).map(async ([folder, groupFiles]) => {
-            const folderPath = `media/${folder}`
+            const folderPath = getFolderStoragePath(folder as FolderKey)
             const unverifiedFiles = groupFiles.filter((f) => !existingDbPaths.has(f.targetPath))
             if (unverifiedFiles.length === 0) return
 
@@ -236,22 +298,19 @@ export default function UploadSummaryModal({
                     })
                     if (!error && data && data.length > 0) {
                       const found = data.some(
-                        (item) => item.name.trim().toLowerCase() === fileItem.name.trim().toLowerCase()
+                        (item) =>
+                          isVisibleStorageItem({ id: item.id, name: item.name }) &&
+                          item.name.trim().toLowerCase() === fileItem.name.trim().toLowerCase()
                       )
                       if (found) existingStoragePaths.add(fileItem.targetPath)
                     }
                   })
                 )
               } else {
-                const { data, error } = await supabase.storage.from("images").list(folderPath, {
-                  limit: 1000,
-                })
-                if (!error && data && data.length > 0) {
-                  const existingNameSet = new Set(data.map((item) => item.name.trim().toLowerCase()))
-                  for (const fileItem of unverifiedFiles) {
-                    if (existingNameSet.has(fileItem.name.trim().toLowerCase())) {
-                      existingStoragePaths.add(fileItem.targetPath)
-                    }
+                const existingNameSet = await listAllFolderFileNames(folderPath)
+                for (const fileItem of unverifiedFiles) {
+                  if (existingNameSet.has(fileItem.name.trim().toLowerCase())) {
+                    existingStoragePaths.add(fileItem.targetPath)
                   }
                 }
               }
@@ -275,7 +334,7 @@ export default function UploadSummaryModal({
               return {
                 ...item,
                 status: "already_exists",
-                statusMessage: `Already available in ${item.targetFolder} folder`,
+                statusMessage: `Already available in ${getFolderFullLabel(item.targetFolder)} folder`,
                 existingLocation: item.targetPath,
               }
             }
@@ -299,7 +358,7 @@ export default function UploadSummaryModal({
     return () => {
       cancelled = true
     }
-  }, [isOpen, files, cleanupPreviewUrls])
+  }, [isOpen, files, uploadDestination, cleanupPreviewUrls])
 
   // Count summaries
   const stats = useMemo(() => {
@@ -429,7 +488,9 @@ export default function UploadSummaryModal({
       )
 
       try {
-        await uploadImage("images", item.targetPath, item.file)
+        // upsert:false is the backstop — if the availability check missed a duplicate, storage rejects it
+        // instead of silently overwriting the existing image.
+        await uploadImage("images", item.targetPath, item.file, { upsert: false })
 
         // Auto-assign inventory row if matching serial number is found
         let attachedDetails: InventoryDetails | null = null
@@ -474,6 +535,21 @@ export default function UploadSummaryModal({
           prev.map((f) => (f.id === item.id ? { ...f, status: "uploaded", statusMessage: "Uploaded successfully!" } : f))
         )
       } catch (err: any) {
+        if (isAlreadyExistsError(err)) {
+          setQueuedFiles((prev) =>
+            prev.map((f) =>
+              f.id === item.id
+                ? {
+                    ...f,
+                    status: "already_exists",
+                    statusMessage: `Already available in ${getFolderFullLabel(item.targetFolder)} folder`,
+                    existingLocation: item.targetPath,
+                  }
+                : f
+            )
+          )
+          continue
+        }
         console.error("Upload error for file:", item.name, err)
         setQueuedFiles((prev) =>
           prev.map((f) =>
@@ -499,6 +575,46 @@ export default function UploadSummaryModal({
     }
   }
 
+  const fmt = (n: number) => n.toLocaleString("en-IN")
+  const skipped = stats.duplicates + stats.existing
+  const progressPct = Math.round((uploadProgress.current / Math.max(1, uploadProgress.total)) * 100)
+
+  // Summary cards double as the list filter
+  const filterCards: {
+    id: typeof activeTab
+    label: string
+    value: number
+    icon: React.ReactNode
+    idle: string
+    active: string
+  }[] = [
+    { id: "all", label: "Selected", value: stats.total, icon: <Files className="w-4 h-4 text-zinc-500" />, idle: "border-zinc-200 bg-zinc-50/70", active: "border-zinc-900 bg-white ring-1 ring-zinc-900" },
+    { id: "ready", label: "Ready", value: stats.ready, icon: <CircleCheckFill className="w-4 h-4 text-emerald-600" />, idle: "border-emerald-200 bg-emerald-50/60", active: "border-emerald-600 bg-emerald-50 ring-1 ring-emerald-600" },
+    { id: "existing", label: "In library", value: stats.existing, icon: <CircleExclamationFill className="w-4 h-4 text-amber-600" />, idle: "border-amber-200 bg-amber-50/60", active: "border-amber-600 bg-amber-50 ring-1 ring-amber-600" },
+    { id: "duplicates", label: "Duplicates", value: stats.duplicates, icon: <Copy className="w-4 h-4 text-rose-600" />, idle: "border-rose-200 bg-rose-50/60", active: "border-rose-600 bg-rose-50 ring-1 ring-rose-600" },
+  ]
+
+  const statusPill = (item: QueuedUploadFile) => {
+    const base = "inline-flex items-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+    switch (item.status) {
+      case "checking":
+        return <span className={`${base} border-zinc-200 bg-zinc-100 text-zinc-500`}><Spinner size="sm" color="current" />Checking</span>
+      case "ready":
+        return <span className={`${base} border-emerald-200 bg-emerald-50 text-emerald-700`}><CircleCheckFill className="w-3.5 h-3.5" />Ready</span>
+      case "already_exists":
+        return <span className={`${base} border-amber-200 bg-amber-50 text-amber-800`}><CircleExclamationFill className="w-3.5 h-3.5" />In library</span>
+      case "batch_duplicate":
+        return <span className={`${base} border-rose-200 bg-rose-50 text-rose-700`}><Copy className="w-3.5 h-3.5" />Duplicate</span>
+      case "uploading":
+        return <span className={`${base} border-indigo-200 bg-indigo-50 text-indigo-700`}><Spinner size="sm" color="current" />Uploading</span>
+      case "uploaded":
+        return <span className={`${base} border-emerald-300 bg-emerald-100 text-emerald-800`}><CircleCheckFill className="w-3.5 h-3.5" />Uploaded</span>
+      case "error":
+        // The reason is long-form, so it lives in the tooltip rather than the row
+        return <span className={`${base} border-red-200 bg-red-50 text-red-700`} title={item.statusMessage}><TriangleExclamation className="w-3.5 h-3.5" />Failed</span>
+    }
+  }
+
   return (
     <Modal
       isOpen={isOpen}
@@ -506,286 +622,191 @@ export default function UploadSummaryModal({
         if (!open && !isUploading) handleClose()
       }}
     >
-      <Modal.Backdrop className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-4 overflow-y-auto">
+      <Modal.Backdrop className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[9999] flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
         <Modal.Container className="w-full max-w-4xl my-auto">
-          <Modal.Dialog className="rounded-3xl shadow-2xl bg-white border border-zinc-200 overflow-hidden w-full relative z-[10000] flex flex-col max-h-[88vh]">
-            {/* Modal Header */}
-            <Modal.Header className="px-6 pt-5 pb-4 border-b border-zinc-100 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-zinc-900 text-white flex items-center justify-center font-bold shadow-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
-                    Upload Summary & Verification
-                    {isChecking && (
-                      <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full flex items-center gap-1.5 animate-pulse">
-                        <Spinner size="sm" color="current" />
-                        Verifying availability…
-                      </span>
-                    )}
-                  </h3>
-                  <p className="text-xs text-zinc-500 font-medium">
-                    Review and deduplicate files by filename. Only unique files not already available in the library will be uploaded
-                    {currentFolder !== "root" ? ` (viewing ${currentFolder} folder)` : ""}.
-                  </p>
-                </div>
+          {/* HeroUI's default dialog size caps width at --container-md; widen it explicitly */}
+          <Modal.Dialog className="max-w-4xl! w-full rounded-3xl shadow-2xl bg-white border border-zinc-200 overflow-hidden relative z-[10000] flex flex-col max-h-[88vh]">
+            {/* Header */}
+            <Modal.Header className="px-4 sm:px-6 py-4 border-b border-zinc-100 flex items-center gap-3 shrink-0">
+              <div className="w-9 h-9 rounded-xl bg-zinc-900 text-white flex items-center justify-center shrink-0">
+                <ArrowUpFromLine className="w-4.5 h-4.5" />
               </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm sm:text-base font-bold text-zinc-900 truncate">Upload files</h3>
+                {isChecking && (
+                  <p className="text-[11px] font-medium text-indigo-600 flex items-center gap-1.5">
+                    <Spinner size="sm" color="current" />
+                    Checking library…
+                  </p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={handleClose}
+                disabled={isUploading}
+                aria-label="Close"
+                className="w-8 h-8 shrink-0 inline-flex items-center justify-center rounded-lg text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Xmark className="w-4 h-4" />
+              </button>
             </Modal.Header>
 
-            {/* Modal Body */}
-            <Modal.Body className="p-6 flex flex-col gap-4 overflow-hidden flex-1">
-              {/* Stat Cards */}
-              <div className="grid grid-cols-4 gap-3 shrink-0">
-                <div className="bg-zinc-50 border border-zinc-200/80 rounded-2xl p-3 flex flex-col">
-                  <span className="text-[11px] font-semibold text-zinc-500">Total Selected</span>
-                  <span className="text-xl font-bold text-zinc-900 mt-0.5">{stats.total}</span>
-                </div>
-
-                <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-3 flex flex-col">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-emerald-800">Ready to Upload</span>
-                    <CheckCircleIcon className="w-4 h-4 text-emerald-600" />
-                  </div>
-                  <span className="text-xl font-bold text-emerald-950 mt-0.5">{stats.ready}</span>
-                </div>
-
-                <div className="bg-amber-50/60 border border-amber-200/80 rounded-2xl p-3 flex flex-col">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-amber-800">Already in Library</span>
-                    <AlertCircleIcon className="w-4 h-4 text-amber-600" />
-                  </div>
-                  <span className="text-xl font-bold text-amber-950 mt-0.5">{stats.existing}</span>
-                </div>
-
-                <div className="bg-rose-50/60 border border-rose-200/80 rounded-2xl p-3 flex flex-col">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-semibold text-rose-800">Batch Duplicates</span>
-                    <CopyDuplicateIcon className="w-4 h-4 text-rose-600" />
-                  </div>
-                  <span className="text-xl font-bold text-rose-950 mt-0.5">{stats.duplicates}</span>
-                </div>
+            {/* Body */}
+            <Modal.Body className="px-4 sm:px-6 py-4 flex flex-col gap-3 overflow-hidden flex-1 min-h-0">
+              {/* Destination selector — defaults to active Fabrics folder when inside Fabrics, or Media auto-route otherwise */}
+              <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-zinc-200 bg-zinc-50/70 px-3 py-2 shrink-0">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-zinc-500 mr-1">
+                  <FolderIcon className="w-3.5 h-3.5 text-zinc-400" />
+                  Destination:
+                </span>
+                <button
+                  type="button"
+                  disabled={isUploading}
+                  onClick={() => setUploadDestination("auto")}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border disabled:opacity-50 disabled:cursor-not-allowed ${
+                    uploadDestination === "auto"
+                      ? "bg-zinc-900 text-white border-zinc-900 shadow-2xs"
+                      : "bg-white text-zinc-700 border-zinc-200 hover:border-zinc-300 hover:bg-zinc-100"
+                  }`}
+                >
+                  Auto-route (Media)
+                </button>
+                {FABRIC_FOLDER_KEYS.map((fabricKey) => {
+                  const isActive = uploadDestination === fabricKey
+                  return (
+                    <button
+                      key={fabricKey}
+                      type="button"
+                      disabled={isUploading}
+                      onClick={() => setUploadDestination(fabricKey)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all cursor-pointer border disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isActive
+                          ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs"
+                          : "bg-white text-zinc-700 border-zinc-200 hover:border-indigo-300 hover:bg-indigo-50/60"
+                      }`}
+                    >
+                      Fabrics / {getFolderDisplayName(fabricKey)}
+                    </button>
+                  )
+                })}
               </div>
 
-              {/* Upload Progress Bar (when active) */}
+              {/* Summary cards — click to filter */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 shrink-0" role="tablist" aria-label="Filter files">
+                {filterCards.map((card) => {
+                  const isActive = activeTab === card.id
+                  return (
+                    <button
+                      key={card.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveTab(card.id)}
+                      className={`min-w-0 rounded-2xl border px-3 py-2.5 text-left transition-all cursor-pointer ${isActive ? card.active : `${card.idle} hover:border-zinc-300`}`}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-semibold text-zinc-500 truncate">{card.label}</span>
+                        <span className="shrink-0">{card.icon}</span>
+                      </span>
+                      <span className="block text-lg font-bold text-zinc-900 tabular-nums leading-tight mt-0.5">{fmt(card.value)}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Upload progress */}
               {isUploading && (
-                <div className="bg-zinc-900 text-white p-3.5 rounded-2xl shadow-md shrink-0 flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="flex items-center gap-2">
-                      <Spinner size="sm" color="current" />
-                      Uploading {uploadProgress.current} of {uploadProgress.total} file(s)…
+                <div className="shrink-0 rounded-2xl bg-zinc-900 text-white px-3.5 py-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold min-w-0">
+                    <Spinner size="sm" color="current" />
+                    <span className="whitespace-nowrap tabular-nums">
+                      {fmt(uploadProgress.current)} / {fmt(uploadProgress.total)}
                     </span>
-                    <span className="text-zinc-400 font-mono text-[11px] truncate max-w-[280px]">
-                      {uploadProgress.currentName}
-                    </span>
+                    <span className="ml-auto min-w-0 truncate font-mono text-[11px] text-zinc-400">{uploadProgress.currentName}</span>
+                    <span className="shrink-0 tabular-nums text-zinc-300">{progressPct}%</span>
                   </div>
-                  <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-full transition-all duration-300"
-                      style={{
-                        width: `${Math.round((uploadProgress.current / Math.max(1, uploadProgress.total)) * 100)}%`,
-                      }}
-                    />
+                  <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                    <div className="bg-emerald-500 h-full transition-all duration-300" style={{ width: `${progressPct}%` }} />
                   </div>
                 </div>
               )}
 
-              {/* Filter Tabs & Search & Quick Deduplicate Action */}
-              <div className="flex items-center justify-between gap-3 shrink-0">
-                <div className="flex items-center gap-1.5 bg-zinc-100 p-1 rounded-xl">
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("all")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                      activeTab === "all" ? "bg-white text-zinc-900 shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    All ({stats.total})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("ready")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                      activeTab === "ready" ? "bg-emerald-600 text-white shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    Ready ({stats.ready})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("existing")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                      activeTab === "existing" ? "bg-amber-600 text-white shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    Already Exists ({stats.existing})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab("duplicates")}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                      activeTab === "duplicates" ? "bg-rose-600 text-white shadow-2xs" : "text-zinc-600 hover:text-zinc-900"
-                    }`}
-                  >
-                    Duplicates ({stats.duplicates})
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2">
+              {/* Search + bulk remove */}
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="relative flex-1 min-w-0">
+                  <Magnifier className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search in selection…"
+                    placeholder="Search files…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 px-2.5 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-400 w-44"
+                    aria-label="Search files in this upload"
+                    className="w-full h-9 pl-8 pr-3 text-xs bg-zinc-50 border border-zinc-200 rounded-xl focus:outline-none focus:border-zinc-400 focus:bg-white"
                   />
-
-                  {(stats.duplicates > 0 || stats.existing > 0) && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onPress={handleRemoveDuplicates}
-                      isDisabled={isUploading}
-                      className="h-8 text-xs font-semibold border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 rounded-xl cursor-pointer"
-                    >
-                      <TrashIcon className="w-3.5 h-3.5 text-rose-600" />
-                      Remove Duplicates ({stats.duplicates + stats.existing})
-                    </Button>
-                  )}
-                </div>
+                </label>
+                {skipped > 0 && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onPress={handleRemoveDuplicates}
+                    isDisabled={isUploading}
+                    className="h-9 shrink-0 text-xs font-semibold border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-100 rounded-xl cursor-pointer whitespace-nowrap"
+                  >
+                    <TrashBin className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline">Remove skipped</span> ({fmt(skipped)})
+                  </Button>
+                )}
               </div>
 
-              {/* Virtualized Files Table / Scrollable List */}
+              {/* File list (virtualized) */}
               <div
                 ref={scrollContainerRef}
                 onScroll={handleListScroll}
-                className="flex-1 overflow-y-auto border border-zinc-200 rounded-2xl bg-zinc-50/40 relative min-h-[320px]"
+                className="flex-1 overflow-y-auto overflow-x-hidden border border-zinc-200 rounded-2xl bg-white relative min-h-[260px]"
               >
                 {displayedFiles.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center p-10 text-center text-zinc-400">
-                    <p className="text-xs font-semibold">No files match the selected filter</p>
-                  </div>
+                  <div className="flex items-center justify-center p-10 text-xs font-semibold text-zinc-400">No files match</div>
                 ) : (
                   <div style={{ height: `${totalVirtualHeight}px`, position: "relative", width: "100%" }}>
                     {visibleFiles.map(({ fileItem, top }) => {
-                      const isReady = fileItem.status === "ready"
-                      const isBatchDupe = fileItem.status === "batch_duplicate"
-                      const isExisting = fileItem.status === "already_exists"
-                      const isUploaded = fileItem.status === "uploaded"
-                      const isFileUploading = fileItem.status === "uploading"
-
+                      const isSkipped = fileItem.status === "batch_duplicate" || fileItem.status === "already_exists"
+                      const canRemove = !isUploading && fileItem.status !== "uploaded"
                       return (
                         <div
                           key={fileItem.id}
-                          style={{
-                            position: "absolute",
-                            top: `${top}px`,
-                            left: 0,
-                            right: 0,
-                            height: `${VIRTUAL_ROW_HEIGHT}px`,
-                          }}
-                          className={`flex items-center justify-between px-3 border-b border-zinc-200/70 transition-colors ${
-                            isBatchDupe
-                              ? "bg-rose-50/30 hover:bg-rose-50/50"
-                              : isExisting
-                              ? "bg-amber-50/30 hover:bg-amber-50/50"
-                              : isReady
-                              ? "bg-white hover:bg-zinc-50"
-                              : "bg-white"
-                          }`}
+                          style={{ position: "absolute", top: `${top}px`, left: 0, right: 0, height: `${VIRTUAL_ROW_HEIGHT}px` }}
+                          className={`flex items-center gap-3 px-3 border-b border-zinc-100 ${isSkipped ? "bg-zinc-50/70" : "bg-white hover:bg-zinc-50"}`}
                         >
-                          {/* File info with thumbnail */}
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="relative w-10 h-10 rounded-xl overflow-hidden border border-zinc-200 shrink-0 bg-zinc-100 shadow-2xs">
-                              <Image
-                                src={fileItem.previewUrl}
-                                alt={fileItem.name}
-                                fill
-                                className="object-cover"
-                                unoptimized
-                              />
-                            </div>
-
-                            <div className="flex flex-col min-w-0 pr-4">
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className={`text-xs font-semibold truncate ${
-                                    isBatchDupe || isExisting ? "text-zinc-600 line-through decoration-zinc-400" : "text-zinc-900"
-                                  }`}
-                                  title={fileItem.name}
-                                >
-                                  {fileItem.name}
-                                </span>
-                                <span className="text-[10px] font-bold text-zinc-600 bg-zinc-100 px-1.5 py-0.5 rounded-md border border-zinc-200/60">
-                                  {fileItem.targetFolder}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2 text-[11px] text-zinc-400">
-                                <span>{formatBytes(fileItem.size)}</span>
-                                <span>·</span>
-                                <span className="truncate">{fileItem.statusMessage}</span>
-                              </div>
-                            </div>
+                          <div className="relative w-10 h-10 rounded-lg overflow-hidden border border-zinc-200 shrink-0 bg-zinc-100">
+                            <Image src={fileItem.previewUrl} alt="" fill className="object-cover" unoptimized />
                           </div>
 
-                          {/* Status Badge & Actions */}
-                          <div className="flex items-center gap-3 shrink-0">
-                            {fileItem.status === "checking" && (
-                              <span className="text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                                <Spinner size="sm" color="current" />
-                                Checking…
-                              </span>
-                            )}
-
-                            {isReady && (
-                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 border border-emerald-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-600" />
-                                Ready
-                              </span>
-                            )}
-
-                            {isExisting && (
-                              <span className="text-[11px] font-bold text-amber-800 bg-amber-100/80 border border-amber-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                <AlertCircleIcon className="w-3.5 h-3.5 text-amber-600" />
-                                Already in library
-                              </span>
-                            )}
-
-                            {isBatchDupe && (
-                              <span className="text-[11px] font-bold text-rose-800 bg-rose-100/80 border border-rose-200 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                <CopyDuplicateIcon className="w-3.5 h-3.5 text-rose-600" />
-                                Batch duplicate
-                              </span>
-                            )}
-
-                            {isFileUploading && (
-                              <span className="text-[11px] font-bold text-indigo-700 bg-indigo-100/80 border border-indigo-200 px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-2xs">
-                                <Spinner size="sm" color="current" />
-                                Uploading…
-                              </span>
-                            )}
-
-                            {isUploaded && (
-                              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-600" />
-                                Uploaded
-                              </span>
-                            )}
-
-                            {/* Remove button */}
-                            {!isUploading && !isUploaded && (
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveFile(fileItem.id)}
-                                title="Remove from queue"
-                                className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                              >
-                                <TrashIcon className="w-4 h-4" />
-                              </button>
-                            )}
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-xs font-semibold truncate ${isSkipped ? "text-zinc-500 line-through decoration-zinc-300" : "text-zinc-900"}`}
+                              title={fileItem.name}
+                            >
+                              {fileItem.name}
+                            </p>
+                            <p className="flex items-center gap-1.5 text-[11px] text-zinc-400 whitespace-nowrap">
+                              <span className="tabular-nums">{formatBytes(fileItem.size)}</span>
+                              <span aria-hidden>·</span>
+                              <span className="truncate">{getFolderFullLabel(fileItem.targetFolder)}</span>
+                            </p>
                           </div>
+
+                          <div className="shrink-0">{statusPill(fileItem)}</div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(fileItem.id)}
+                            disabled={!canRemove}
+                            aria-label={`Remove ${fileItem.name}`}
+                            title="Remove from upload"
+                            className="w-7 h-7 shrink-0 inline-flex items-center justify-center rounded-lg text-zinc-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer disabled:invisible"
+                          >
+                            <TrashBin className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       )
                     })}
@@ -794,59 +815,51 @@ export default function UploadSummaryModal({
               </div>
             </Modal.Body>
 
-            {/* Modal Footer */}
-            <Modal.Footer className="px-6 py-4 bg-zinc-50 border-t border-zinc-100 flex items-center justify-between shrink-0">
-              <div className="text-xs text-zinc-500 font-medium">
-                {stats.ready > 0 ? (
-                  <span>
-                    <strong className="text-zinc-900">{stats.ready}</strong> unique file(s) ready to upload.
-                    {(stats.duplicates > 0 || stats.existing > 0) && (
-                      <span className="text-amber-700 ml-1">
-                        ({stats.duplicates + stats.existing} excluded duplicates will be skipped)
-                      </span>
-                    )}
-                  </span>
+            {/* Footer */}
+            <Modal.Footer className="px-4 sm:px-6 py-3 bg-zinc-50 border-t border-zinc-100 flex items-center gap-3 shrink-0">
+              <p className="min-w-0 flex-1 truncate text-xs text-zinc-500">
+                {stats.ready > 0 || isUploading ? (
+                  <>
+                    <strong className="text-zinc-900 tabular-nums">{fmt(stats.ready)}</strong> to upload
+                    {skipped > 0 && <span className="tabular-nums"> · {fmt(skipped)} skipped</span>}
+                  </>
                 ) : (
-                  <span className="text-rose-600 font-semibold">
-                    No unique new files available to upload.
-                  </span>
+                  <span className="font-semibold text-rose-600">Nothing new to upload</span>
                 )}
-              </div>
+              </p>
 
-              <div className="flex items-center gap-2">
+              {!isUploading && (
                 <Button
                   variant="outline"
                   onPress={handleClose}
-                  isDisabled={isUploading}
-                  className="rounded-xl text-xs px-4 h-9 cursor-pointer font-semibold border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                  className="shrink-0 rounded-xl text-xs px-4 h-9 cursor-pointer font-semibold border-zinc-300 text-zinc-700 hover:bg-zinc-100"
                 >
-                  {isUploading ? "Uploading…" : "Cancel"}
+                  Cancel
                 </Button>
-
-                <Button
-                  onPress={handleUploadUniqueFiles}
-                  isDisabled={stats.ready === 0 || isChecking || isUploading}
-                  className={`rounded-xl text-xs px-5 h-9 cursor-pointer font-bold shadow-xs text-white transition-all flex items-center gap-2 ${
-                    stats.ready > 0 && !isChecking && !isUploading
-                      ? "bg-zinc-900 hover:bg-zinc-800"
+              )}
+              <Button
+                onPress={handleUploadUniqueFiles}
+                isDisabled={stats.ready === 0 || isChecking || isUploading}
+                className={`shrink-0 rounded-xl text-xs px-4 h-9 font-bold text-white transition-all flex items-center gap-2 whitespace-nowrap ${
+                  isUploading
+                    ? "bg-zinc-900 cursor-wait"
+                    : stats.ready > 0 && !isChecking
+                      ? "bg-zinc-900 hover:bg-zinc-800 cursor-pointer"
                       : "bg-zinc-300 text-zinc-500 cursor-not-allowed"
-                  }`}
-                >
-                  {isUploading ? (
-                    <>
-                      <Spinner size="sm" color="current" />
-                      Uploading…
-                    </>
-                  ) : (
-                    <>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                      </svg>
-                      Upload {stats.ready} Unique File{stats.ready === 1 ? "" : "s"}
-                    </>
-                  )}
-                </Button>
-              </div>
+                }`}
+              >
+                {isUploading ? (
+                  <>
+                    <Spinner size="sm" color="current" />
+                    <span className="tabular-nums">{progressPct}%</span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowUpFromLine className="w-3.5 h-3.5" />
+                    Upload {fmt(stats.ready)}
+                  </>
+                )}
+              </Button>
             </Modal.Footer>
           </Modal.Dialog>
         </Modal.Container>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { supabase } from "@/lib/supabase/client"
 import { getThumbnailUrl, getOriginalPublicUrl } from "@/lib/supabase/storage"
 import type { GalleryInventoryItem } from "@/hooks/useGalleryCatalog"
+import { ArrowDownToLine, ChevronDown, ChevronLeft, ChevronRight, Hashtag, Layers, Pencil, Picture, Plus, TextAlignLeft, Xmark } from "@gravity-ui/icons"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -94,6 +95,16 @@ function parseColors(colorNames: string | null, colorCodes: string | null): { na
 function formatDate(iso: string | null) {
   if (!iso) return "—"
   return new Date(iso).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+/** Lets a `role="button"` list row respond to Enter/Space like a real button. */
+function onActivateKey(activate: () => void) {
+  return (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault()
+      activate()
+    }
+  }
 }
 
 const FIBER_COLORS = [
@@ -496,11 +507,7 @@ function ImageGallery({ images, sku }: { images: RecordImage[]; sku: string | nu
   if (images.length === 0) {
     return (
       <div className="w-full rounded-2xl overflow-hidden bg-zinc-50 border border-zinc-150 flex items-center justify-center shrink-0 shadow-xs py-16">
-        <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1" className="text-zinc-200" aria-hidden="true">
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <circle cx="8.5" cy="8.5" r="1.5" />
-          <polyline points="21,15 16,10 5,21" />
-        </svg>
+        <Picture width="48" height="48" className="text-zinc-200" aria-hidden="true" />
       </div>
     )
   }
@@ -541,9 +548,7 @@ function ImageGallery({ images, sku }: { images: RecordImage[]; sku: string | nu
             title="Download full-size image"
             className="absolute top-2 right-2 z-10 flex items-center justify-center w-8 h-8 rounded-lg bg-black/50 text-white opacity-0 group-hover/image:opacity-100 hover:bg-black/70 transition-opacity backdrop-blur-sm cursor-pointer"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v12m0 0l-4-4m4 4l4-4M4 20h16" />
-            </svg>
+            <ArrowDownToLine />
           </button>
         </div>
       ))}
@@ -614,11 +619,7 @@ function SkuInventoryList({
                 <ScrollShadow orientation="horizontal" hideScrollBar className="flex items-center gap-4 pb-2">
                   {images.length === 0 ? (
                     <div className="h-32 w-32 rounded-lg border border-zinc-200 border-dashed flex flex-col items-center justify-center bg-zinc-50 shrink-0 text-zinc-400">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21,15 16,10 5,21" />
-                      </svg>
+                      <Picture width="20" height="20" />
                       <span className="text-[10px] mt-1 font-medium">No Images</span>
                     </div>
                   ) : (
@@ -681,7 +682,7 @@ function RecordDetail({
     const skuKeys = Object.keys(skuGroups)
 
     return (
-      <div className="h-full overflow-y-auto scrollbar-thin p-6">
+      <div className="h-full overflow-y-auto scrollbar-thin p-4 sm:p-6">
         {isLoading ? (
           <div className="flex flex-col gap-4 animate-pulse max-w-4xl mx-auto">
             {[75, 55, 90, 65, 80, 50].map((w, i) => (
@@ -695,7 +696,7 @@ function RecordDetail({
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-150 pb-4">
                 <div>
                   <Typography.Paragraph size="xs" weight="medium" className="uppercase tracking-wider text-zinc-400 mb-0.5">Active SKU</Typography.Paragraph>
-                  <Typography.Paragraph weight="bold" className="font-mono text-2xl text-zinc-900 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100/50 inline-block">
+                  <Typography.Paragraph weight="bold" className="font-mono text-xl sm:text-2xl bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100/50 inline-block break-all">
                     {item.sku ?? "—"}
                   </Typography.Paragraph>
                 </div>
@@ -714,7 +715,7 @@ function RecordDetail({
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-150 pb-4">
                 <div>
                   <Typography.Paragraph size="xs" weight="medium" className="uppercase tracking-wider text-zinc-400 mb-0.5">Product Code</Typography.Paragraph>
-                  <Typography.Paragraph weight="bold" className="font-mono text-2xl text-zinc-900 bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100/50 inline-block">
+                  <Typography.Paragraph weight="bold" className="font-mono text-xl sm:text-2xl bg-indigo-50 text-indigo-700 px-3 py-1 rounded-lg border border-indigo-100/50 inline-block break-all">
                     {item.product_code ?? "—"}
                   </Typography.Paragraph>
                 </div>
@@ -851,9 +852,11 @@ function RecordDetail({
 
   // ─── Serial Number View (Original Layout: 2 Columns) ───────────────────────
   return (
-    <div className="flex flex-col md:flex-row gap-0 h-full">
+    // Container query (not viewport): the same layout renders in the narrow record panel and the wide modal.
+    <div className="@container h-full">
+    <div className="flex flex-col @2xl:flex-row gap-0 h-full overflow-y-auto @2xl:overflow-hidden">
       {/* Left: image gallery */}
-      <ScrollShadow hideScrollBar className="md:w-[45%] md:max-w-sm p-5 md:border-r md:border-zinc-100 [transform:translate3d(0,0,0)] [backface-visibility:hidden] [webkit-overflow-scrolling:touch]">
+      <ScrollShadow hideScrollBar className="shrink-0 @2xl:shrink @2xl:w-[45%] @2xl:max-w-sm p-4 sm:p-5 @2xl:border-r @2xl:border-zinc-100 [transform:translate3d(0,0,0)] [backface-visibility:hidden] [webkit-overflow-scrolling:touch]">
         <ImageGallery key={item.id} images={data?.images ?? []} sku={item.sku} />
 
         {/* Navigation arrows */}
@@ -868,7 +871,7 @@ function RecordDetail({
                 hasPrev ? "text-indigo-600 hover:bg-indigo-50" : "text-zinc-300 cursor-not-allowed"
               )}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+              <ChevronLeft />
               Prev
             </button>
             <Typography.Paragraph size="xs" className="text-zinc-400">{currentIdx + 1} / {allItems.length}</Typography.Paragraph>
@@ -882,14 +885,14 @@ function RecordDetail({
               )}
             >
               Next
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+              <ChevronRight />
             </button>
           </div>
         )}
       </ScrollShadow>
 
       {/* Right: detail */}
-      <ScrollShadow hideScrollBar className="flex-1 p-5">
+      <ScrollShadow hideScrollBar className="shrink-0 @2xl:shrink flex-1 p-4 sm:p-5">
         {isLoading ? (
           <div className="flex flex-col gap-3 animate-pulse">
             {[75, 55, 90, 65, 80, 50].map((w, i) => (
@@ -913,7 +916,7 @@ function RecordDetail({
               {item.location_name && (
                 <div>
                   <Typography.Paragraph size="xs" weight="medium" className="uppercase tracking-wider text-zinc-400 mb-0.5">Current Location</Typography.Paragraph>
-                  <p className="text-sm font-semibold text-zinc-800 bg-indigo-50/50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100/50 inline-block">
+                  <p className="text-sm font-semibold bg-indigo-50/50 text-indigo-700 px-2.5 py-1 rounded-lg border border-indigo-100/50 inline-block">
                     {item.location_name} {item.location_country ? `(${item.location_country})` : ""}
                   </p>
                 </div>
@@ -1036,20 +1039,21 @@ function RecordDetail({
                 type="button"
                 className="flex items-center gap-1.5 h-9 px-4 rounded-xl bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors cursor-pointer"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l-4 1 1-4 9.293-9.293a1 1 0 011.414 0l2.586 2.586a1 1 0 010 1.414L9 13z" /></svg>
+                <Pencil width="14" height="14" />
                 Edit
               </button>
               <button
                 type="button"
                 className="flex items-center gap-1.5 h-9 px-4 rounded-xl border border-zinc-200 text-zinc-700 text-sm font-medium hover:bg-zinc-50 transition-colors cursor-pointer"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 5v14M5 12h14" /></svg>
+                <Plus width="14" height="14" />
                 Add Inventory
               </button>
             </div>
           </div>
         )}
       </ScrollShadow>
+    </div>
     </div>
   )
 }
@@ -1080,6 +1084,9 @@ export default function RecordView({
   const [viewMode, setViewMode] = useState<"serial" | "sku" | "product_code">("sku")
   const [selectedSku, setSelectedSku] = useState<string | null>(null)
   const [selectedProductCode, setSelectedProductCode] = useState<string | null>(null)
+  // Below md there's only room for one pane: the list, or the detail of what was picked from it
+  const [mobilePane, setMobilePane] = useState<"list" | "detail">("list")
+  const listRef = useRef<HTMLDivElement>(null)
 
   const activeItem = asModal
     ? modalItem ?? null
@@ -1112,6 +1119,14 @@ export default function RecordView({
     }
   }, [items, selectedId, viewMode, selectedSku, selectedProductCode])
 
+  // Keep the selected row visible — e.g. after Prev/Next in the detail or switching the arrangement
+  const selectedListKey =
+    viewMode === "serial" ? (selectedId ?? items[0]?.id) : viewMode === "sku" ? selectedSku : selectedProductCode
+  useEffect(() => {
+    if (asModal) return
+    listRef.current?.querySelector<HTMLElement>('[aria-current="true"]')?.scrollIntoView({ block: "nearest" })
+  }, [asModal, viewMode, selectedListKey])
+
   // ── Modal mode ─────────────────────────────────────────────────────────────
   if (asModal) {
     return (
@@ -1132,7 +1147,7 @@ export default function RecordView({
                       onClick={close}
                       className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <Xmark />
                     </button>
                   </div>
 
@@ -1170,12 +1185,12 @@ export default function RecordView({
   if (isLoading) {
     return (
       <div className="flex h-full">
-        <div className="w-72 border-r border-zinc-100 p-4 flex flex-col gap-2 shrink-0">
+        <div className="w-full md:w-72 lg:w-80 md:border-r border-zinc-100 p-4 flex flex-col gap-2 shrink-0">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-12 bg-zinc-100 rounded-xl animate-pulse" />
           ))}
         </div>
-        <div className="flex-1 p-6 flex flex-col gap-3 animate-pulse">
+        <div className="hidden md:flex flex-1 p-6 flex-col gap-3 animate-pulse">
           {[60, 80, 45, 70, 55, 85].map((w, i) => (
             <div key={i} className="h-4 bg-zinc-100 rounded" style={{ width: `${w}%` }} />
           ))}
@@ -1233,6 +1248,13 @@ export default function RecordView({
     }
   })
 
+  const listCountLabel =
+    viewMode === "serial"
+      ? `${items.length.toLocaleString()} ${items.length === 1 ? "piece" : "pieces"}`
+      : viewMode === "sku"
+        ? `${uniqueSkus.length.toLocaleString()} ${uniqueSkus.length === 1 ? "SKU" : "SKUs"} · ${items.length.toLocaleString()} pieces`
+        : `${uniqueProductCodes.length.toLocaleString()} product ${uniqueProductCodes.length === 1 ? "code" : "codes"} · ${items.length.toLocaleString()} pieces`
+
   // Resolve details active item
   let activeDetailsItem = activeItem
   if (viewMode === "sku" && selectedSku) {
@@ -1244,7 +1266,12 @@ export default function RecordView({
   return (
     <div className="flex h-full overflow-hidden">
       {/* Left list panel */}
-      <div className="w-72 shrink-0 border-r border-zinc-150 flex flex-col bg-zinc-50/50">
+      <div
+        className={cn(
+          "w-full md:w-72 lg:w-80 shrink-0 md:border-r border-zinc-150 flex-col bg-zinc-50/50",
+          mobilePane === "detail" ? "hidden md:flex" : "flex"
+        )}
+      >
         
         {/* Dropdown switch at the top */}
         <div className="p-3 border-b border-zinc-150 bg-white shrink-0">
@@ -1259,24 +1286,24 @@ export default function RecordView({
                 <span className="flex items-center gap-1.5">
                   {viewMode === "serial" && (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7 20l4-16m2 16l4-16" /></svg>
+                      <Hashtag width="14" height="14" />
                       Serial Numbers
                     </>
                   )}
                   {viewMode === "sku" && (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                      <Layers width="14" height="14" />
                       SKUs
                     </>
                   )}
                   {viewMode === "product_code" && (
                     <>
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7" /></svg>
+                      <TextAlignLeft width="14" height="14" />
                       Product Codes
                     </>
                   )}
                 </span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" className="text-zinc-400"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                <ChevronDown width="12" height="12" className="text-zinc-400" />
               </span>
             </Dropdown.Trigger>
             <Dropdown.Popover placement="bottom start" className="min-w-[200px]">
@@ -1301,10 +1328,13 @@ export default function RecordView({
               </Dropdown.Menu>
             </Dropdown.Popover>
           </Dropdown>
+          <Typography.Paragraph size="xs" className="text-zinc-400 mt-2 tabular-nums">
+            {listCountLabel}
+          </Typography.Paragraph>
         </div>
 
         {/* Scrollable list items */}
-        <div className="flex-1 overflow-y-auto scrollbar-thin">
+        <div ref={listRef} className="flex-1 overflow-y-auto scrollbar-thin">
           {viewMode === "serial" &&
             items.map((item) => {
               const isSelected = item.id === (selectedId ?? items[0]?.id)
@@ -1313,7 +1343,15 @@ export default function RecordView({
                   key={item.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => onSelectId(item.id)}
+                  aria-current={isSelected}
+                  onClick={() => {
+                    onSelectId(item.id)
+                    setMobilePane("detail")
+                  }}
+                  onKeyDown={onActivateKey(() => {
+                    onSelectId(item.id)
+                    setMobilePane("detail")
+                  })}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border-b border-zinc-100/50",
                     isSelected ? "bg-indigo-50 border-r-3 border-r-indigo-500" : "hover:bg-zinc-100/40 bg-white"
@@ -1324,9 +1362,7 @@ export default function RecordView({
                       <Image src={getThumbnailUrl(item.image_url, { width: 80, quality: 55 })} alt="" fill unoptimized sizes="36px" className="object-cover" />
                     ) : (
                       <div className="w-full h-full bg-zinc-50 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-zinc-300">
-                          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21,15 16,10 5,21" />
-                        </svg>
+                        <Picture width="14" height="14" className="text-zinc-300" />
                       </div>
                     )}
                   </div>
@@ -1357,10 +1393,17 @@ export default function RecordView({
                   key={sku}
                   role="button"
                   tabIndex={0}
+                  aria-current={isSelected}
                   onClick={() => {
                     setSelectedSku(sku)
                     if (firstItem) onSelectId(firstItem.id)
+                    setMobilePane("detail")
                   }}
+                  onKeyDown={onActivateKey(() => {
+                    setSelectedSku(sku)
+                    if (firstItem) onSelectId(firstItem.id)
+                    setMobilePane("detail")
+                  })}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border-b border-zinc-100/50",
                     isSelected ? "bg-indigo-50 border-r-3 border-r-indigo-500" : "hover:bg-zinc-100/40 bg-white"
@@ -1371,9 +1414,7 @@ export default function RecordView({
                       <Image src={getThumbnailUrl(firstItem.image_url, { width: 80, quality: 55 })} alt="" fill unoptimized sizes="36px" className="object-cover" />
                     ) : (
                       <div className="w-full h-full bg-zinc-50 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-zinc-300">
-                          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21,15 16,10 5,21" />
-                        </svg>
+                        <Picture width="14" height="14" className="text-zinc-300" />
                       </div>
                     )}
                   </div>
@@ -1402,10 +1443,17 @@ export default function RecordView({
                   key={productCode}
                   role="button"
                   tabIndex={0}
+                  aria-current={isSelected}
                   onClick={() => {
                     setSelectedProductCode(productCode)
                     if (firstItem) onSelectId(firstItem.id)
+                    setMobilePane("detail")
                   }}
+                  onKeyDown={onActivateKey(() => {
+                    setSelectedProductCode(productCode)
+                    if (firstItem) onSelectId(firstItem.id)
+                    setMobilePane("detail")
+                  })}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer border-b border-zinc-100/50",
                     isSelected ? "bg-indigo-50 border-r-3 border-r-indigo-500" : "hover:bg-zinc-100/40 bg-white"
@@ -1416,9 +1464,7 @@ export default function RecordView({
                       <Image src={getThumbnailUrl(firstItem.image_url, { width: 80, quality: 55 })} alt="" fill unoptimized sizes="36px" className="object-cover" />
                     ) : (
                       <div className="w-full h-full bg-zinc-50 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5" className="text-zinc-300">
-                          <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21,15 16,10 5,21" />
-                        </svg>
+                        <Picture width="14" height="14" className="text-zinc-300" />
                       </div>
                     )}
                   </div>
@@ -1447,7 +1493,23 @@ export default function RecordView({
       </div>
 
       {/* Right detail panel */}
-      <div className="flex-1 overflow-hidden bg-white">
+      <div
+        className={cn(
+          "flex-1 min-w-0 flex-col overflow-hidden bg-white",
+          mobilePane === "list" ? "hidden md:flex" : "flex"
+        )}
+      >
+        <div className="md:hidden flex items-center px-2 py-1.5 border-b border-zinc-150 shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobilePane("list")}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-sm font-medium text-indigo-600 hover:bg-indigo-50 transition-colors cursor-pointer"
+          >
+            <ChevronLeft />
+            Back to list
+          </button>
+        </div>
+        <div className="flex-1 min-h-0">
         <AnimatePresence mode="wait">
           {activeDetailsItem && (
             <motion.div
@@ -1469,6 +1531,7 @@ export default function RecordView({
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
     </div>
   )

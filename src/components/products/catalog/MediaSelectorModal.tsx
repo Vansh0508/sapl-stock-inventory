@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase/client"
 import { uploadImage, getPublicUrl, getThumbnailUrl } from "@/lib/supabase/storage"
 import SearchBar from "@/components/shared/SearchBar"
 import { cn, getFolderForFilename } from "@/lib/utils"
+import { FOLDER_KEYS, getFileStoragePath, getFolderStoragePath, isVisibleStorageItem } from "@/lib/content-folders"
+import { PlayFill, Plus } from "@gravity-ui/icons"
 
 interface MediaSelectorFile {
   name: string
@@ -39,12 +41,6 @@ function getImageSortWeight(filename: string): number {
   return 100
 }
 
-const UploadIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" className="mr-1.5">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-  </svg>
-)
-
 export default function MediaSelectorModal({
   isOpen,
   onOpenChange,
@@ -66,48 +62,23 @@ export default function MediaSelectorModal({
     }
   }, [isOpen, alreadySelectedPaths, defaultSearchQuery])
 
-  // Fetch files inside images/media folders in parallel
+  // Fetch files inside images/media and images/Fabrics folders in parallel
   const fetchFiles = useCallback(async () => {
     setIsLoading(true)
     try {
-      const folders = ["Head", "Floor", "Corner", "Closeup", "Tag"]
-      const listPromises = folders.map(async (folder) => {
+      const listPromises = FOLDER_KEYS.map(async (folder) => {
+        const folderPath = getFolderStoragePath(folder)
         const { data: storageList, error: storageErr } = await supabase.storage
           .from("images")
-          .list(`media/${folder}`, {
-            limit: 100,
-            sortBy: { column: "created_at", order: "desc" },
-          })
-        if (storageErr) throw storageErr
-        return (storageList ?? []).map((file) => {
-          const storagePath = `media/${folder}/${file.name}`
-          return {
-            name: file.name,
-            id: file.id,
-            created_at: file.created_at,
-            metadata: file.metadata ? {
-              size: file.metadata.size,
-              mimetype: file.metadata.mimetype,
-            } : undefined,
-            storagePath,
-            publicUrl: getPublicUrl("images", storagePath),
-          }
-        })
-      })
-
-      // Also list root media folder for unorganized files
-      const rootPromise = (async () => {
-        const { data: storageList, error: storageErr } = await supabase.storage
-          .from("images")
-          .list("media", {
+          .list(folderPath, {
             limit: 100,
             sortBy: { column: "created_at", order: "desc" },
           })
         if (storageErr) throw storageErr
         return (storageList ?? [])
-          .filter(file => file.id !== null)
+          .filter((file) => isVisibleStorageItem({ id: file.id, name: file.name }))
           .map((file) => {
-            const storagePath = `media/${file.name}`
+            const storagePath = getFileStoragePath(folder, file.name)
             return {
               name: file.name,
               id: file.id,
@@ -120,9 +91,9 @@ export default function MediaSelectorModal({
               publicUrl: getPublicUrl("images", storagePath),
             }
           })
-      })()
+      })
 
-      const allLists = await Promise.all([...listPromises, rootPromise])
+      const allLists = await Promise.all(listPromises)
       setFiles(allLists.flat())
     } catch (e) {
       console.error(e)
@@ -290,7 +261,7 @@ export default function MediaSelectorModal({
                       onPress={() => fileInputRef.current?.click()}
                       className="h-9 px-3.5 rounded-xl border border-zinc-200 text-zinc-800 bg-white hover:bg-zinc-50 cursor-pointer font-medium text-xs flex items-center"
                     >
-                      <UploadIcon />
+                      <Plus width="14" height="14" className="mr-1.5" />
                       Add media
                     </Button>
                     <input
@@ -349,9 +320,7 @@ export default function MediaSelectorModal({
                             <div className="relative w-full h-full">
                               {isVideo ? (
                                 <div className="w-full h-full bg-zinc-950 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 24 24" className="text-white opacity-80">
-                                    <path d="M8 5v14l11-7z" />
-                                  </svg>
+                                  <PlayFill width="20" height="20" className="text-white opacity-80" />
                                 </div>
                               ) : (
                                 <Image
